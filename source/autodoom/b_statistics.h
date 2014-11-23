@@ -29,6 +29,8 @@
 #ifndef __EternityEngine__b_statistics__
 #define __EternityEngine__b_statistics__
 
+#include "m_fixed.h"
+
 // As called from P_DamageMobj, register statistics
 struct mobjinfo_t;
 
@@ -37,5 +39,10 @@ void B_AddToPlayerDamage(const mobjinfo_t* mi, int amount);
 
 void B_LoadStatistics();
 void B_DumpStatistics();
+
+////////////////////////////////////////////////////////////////////////////////
+
+void B_UpdateMeanCombatDistance(fixed_t distance);
+void B_PrintMeanCombatDistance();
 
 #endif /* defined(__EternityEngine__b_statistics__) */

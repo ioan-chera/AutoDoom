@@ -29,6 +29,7 @@
 #include <queue>
 #include "../z_zone.h"
 
+#include "b_statistics.h"
 #include "b_think.h"
 #include "b_trace.h"
 #include "b_util.h"
@@ -1077,6 +1078,7 @@ void Bot::doCommand()
     enemyVisible(targets);
     if (!targets.isEmpty())
    {
+       B_UpdateMeanCombatDistance(targets[0].dist);
        //if (!m_hasPath || ss != m_path.last)
        {
            cmd->angleturn = 0;

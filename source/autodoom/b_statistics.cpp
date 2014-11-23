@@ -30,7 +30,9 @@
 #include "../z_zone.h"
 #include "b_statistics.h"
 #include "b_util.h"
+#include "../c_io.h"
 #include "../info.h"
+#include "../v_misc.h"
 
 struct DamageStat
 {
@@ -83,4 +85,25 @@ void B_DumpStatistics()
               it->second.monsterDeaths > 0 ? (double)it->second.toPlayer / it->second.monsterDeaths : DBL_MAX);
    }
    fclose(f);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Mean combat distance
+//
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t g_totalDistance;
+static int g_meanDivisor;
+
+void B_UpdateMeanCombatDistance(fixed_t distance)
+{
+   g_totalDistance += distance / FRACUNIT;
+   ++g_meanDivisor;
+}
+
+void B_PrintMeanCombatDistance()
+{
+   if(g_meanDivisor > 0)
+      C_Printf(FC_HI "Mean distance: %f\n", (double)g_totalDistance / g_meanDivisor);
 }

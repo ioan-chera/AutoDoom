@@ -1894,6 +1894,19 @@ static void AM_drawSteepLines()
       }
    }
 }
+static void AM_drawBreadcrumb()
+{
+    mline_t l;
+    const PODCollection<v2fixed_t>& dots = bots[0].m_breadcrumb.dots();
+    for (const Breadcrumb::Link& link : bots[0].m_breadcrumb.edges())
+    {
+        l.a.x = M_FixedToDouble(dots[link.v[0]].x);
+        l.a.y = M_FixedToDouble(dots[link.v[0]].y);
+        l.b.x = M_FixedToDouble(dots[link.v[1]].x);
+        l.b.y = M_FixedToDouble(dots[link.v[1]].y);
+        AM_drawMline(&l, mapcolor_flat);
+    }
+}
 static void AM_drawNodeLines()
 {
    if(!botMap)
@@ -1901,6 +1914,7 @@ static void AM_drawNodeLines()
    AM_drawBotMapSegs();
 //   AM_drawBotPath();
    AM_drawSteepLines();
+   AM_drawBreadcrumb();
 }
 
 //

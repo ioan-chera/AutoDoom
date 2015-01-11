@@ -79,6 +79,8 @@ void Bot::mapInit()
     m_justGotLost = false;
     m_goalTimer = 0;
     m_dropSS.clear();
+
+    m_breadcrumb.Reset();
     
     justPunched = 0;
 }
@@ -1058,6 +1060,8 @@ void Bot::doCommand()
 {
    if(!active)
       return;  // do nothing if out of game
+
+   m_breadcrumb.TryAdd(pl->mo->x, pl->mo->y);
    
    ++prevCtr;
    

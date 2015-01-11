@@ -33,6 +33,7 @@ struct player_t;
 struct ticcmd_t;
 
 #include "b_botmap.h"
+#include "b_breadcrumb.h"
 #include "b_itemlearn.h"
 #include "b_path.h"
 #include "../e_inventory.h"
@@ -76,6 +77,7 @@ class Bot : public ZoneObject
 public:
    BotPath                  m_path;
    bool                     m_hasPath;
+   Breadcrumb               m_breadcrumb;
 private:
    DeepSearch               m_deepSearchMode;
    std::set<const line_t*>  m_deepTriedLines;
@@ -146,6 +148,7 @@ public:
    m_searchstage(0),
    m_finder(nullptr),
    m_hasPath(false),
+   m_breadcrumb(128*FRACUNIT),
    m_deepSearchMode(DeepNormal),
    m_deepRepeat(nullptr),
    m_straferunstate(0),

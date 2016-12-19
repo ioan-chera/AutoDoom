@@ -954,6 +954,9 @@
     <ClCompile Include="..\source\m_utils.cpp">
       <Filter>Source Files\M_\M_ Source</Filter>
     </ClCompile>
+    <ClCompile Include="..\source\hal\i_tobii.cpp">
+      <Filter>Source Files\HAL\HAL Source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\source\acs_intr.h">
@@ -1705,6 +1708,9 @@
     </ClInclude>
     <ClInclude Include="..\source\m_utils.h">
       <Filter>Source Files\M_\M_ Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\hal\i_tobii.h">
+      <Filter>Source Files\HAL\HAL Headers</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -1266,6 +1266,8 @@ static void D_startEyeTracker()
       startupmsg("I_TobiiInit", "available");
       if(!I_TobiiInit())
          startupmsg("I_TobiiInit", "FAILED initializing!");
+      else
+         atexit(I_TobiiShutdown);
       break;
    }
 }

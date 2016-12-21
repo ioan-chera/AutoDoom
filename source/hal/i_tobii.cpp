@@ -4,6 +4,7 @@
 #include "i_tobii.h"
 
 static TX_CONTEXTHANDLE g_context;
+static TX_TICKET g_connectionStateChangedTicket;
 
 static void TX_CALLCONVENTION 
 I_tobiiConnectionStateChanged(TX_CONNECTIONSTATE state, TX_USERPARAM userParam)
@@ -73,31 +74,25 @@ bool I_TobiiInit()
    if(result != TX_RESULT_OK)
       return false;
 
-   TX_CONTEXTHANDLE context = nullptr;
-   
-   result = txCreateContext(&context, TX_FALSE);
+   result = txCreateContext(&g_context, TX_FALSE);
    if(result != TX_RESULT_OK)
       return false;
 
-   TX_TICKET ticket = 0;
-
-   result = txRegisterConnectionStateChangedHandler(context, &ticket, 
-      I_tobiiConnectionStateChanged, nullptr);
+   result = txRegisterConnectionStateChangedHandler(g_context, 
+      &g_connectionStateChangedTicket, I_tobiiConnectionStateChanged, 
+      nullptr);
    if(result != TX_RESULT_OK)
    {
-      txReleaseContext(&context);
+      I_TobiiShutdown();
       return false;
    }
 
-   result = txEnableConnection(context);
+   result = txEnableConnection(g_context);
    if(result != TX_RESULT_OK)
    {
-      txUnregisterConnectionStateChangedHandler(context, ticket);
-      txReleaseContext(&context);
+      I_TobiiShutdown();
       return false;
    }
-
-   g_context = context;
 
    return true;
 }
@@ -107,6 +102,11 @@ bool I_TobiiInit()
 //
 void I_TobiiShutdown()
 {
+   if(g_connectionStateChangedTicket)
+   {
+      txUnregisterConnectionStateChangedHandler(g_context, g_connectionStateChangedTicket);
+      g_connectionStateChangedTicket = 0;
+   }
    if(g_context)
       txReleaseContext(&g_context);
 }

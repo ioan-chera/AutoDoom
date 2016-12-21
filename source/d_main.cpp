@@ -59,6 +59,7 @@
 #include "g_game.h"
 #include "g_gfs.h"
 #include "hal/i_timer.h"
+#include "hal/i_tobii.h"
 #include "hu_stuff.h"
 #include "i_sound.h"
 #include "i_system.h"
@@ -1244,6 +1245,32 @@ static void D_StartupMessage()
 }
 
 //
+// Tries to start the eye tracker subsystem
+//
+static void D_startEyeTracker()
+{
+   // Try to start eye tracker
+   i_tobiiAvail tobiiAvail = I_TobiiIsAvailable();
+   switch(tobiiAvail)
+   {
+   case i_tobiiAvail::error:
+      startupmsg("I_TobiiInit", "FAILED checking if it's available");
+      break;
+   case i_tobiiAvail::notInstalled:
+      startupmsg("I_TobiiInit", "not installed");
+      break;
+   case i_tobiiAvail::notRunning:
+      startupmsg("I_TobiiInit", "not running");
+      break;
+   case i_tobiiAvail::yes:
+      startupmsg("I_TobiiInit", "available");
+      if(!I_TobiiInit())
+         startupmsg("I_TobiiInit", "FAILED initializing!");
+      break;
+   }
+}
+
+//
 // D_DoomInit
 //
 // Broke D_DoomMain into two functions in order to keep
@@ -1644,6 +1671,8 @@ static void D_DoomInit()
 
    startupmsg("I_Init","Setting up machine state.");
    I_Init();
+
+   D_startEyeTracker();
 
    // devparm override of early set graphics mode
    if(!textmode_startup && !devparm)

@@ -89,7 +89,13 @@ bool I_TobiiInit()
       return false;
    }
 
-
+   result = txEnableConnection(context);
+   if(result != TX_RESULT_OK)
+   {
+      txUnregisterConnectionStateChangedHandler(context, ticket);
+      txReleaseContext(&context);
+      return false;
+   }
 
    g_context = context;
 

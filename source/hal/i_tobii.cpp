@@ -9,6 +9,24 @@ static void TX_CALLCONVENTION
 I_tobiiConnectionStateChanged(TX_CONNECTIONSTATE state, TX_USERPARAM userParam)
 {
    // TODO: report on state
+   switch(state)
+   {
+   case TX_CONNECTIONSTATE_CONNECTED:
+      puts("Connected");
+      break;
+   case TX_CONNECTIONSTATE_DISCONNECTED:
+      puts("Disconnected");
+      break;
+   case TX_CONNECTIONSTATE_TRYINGTOCONNECT:
+      puts("Trying to connect");
+      break;
+   case TX_CONNECTIONSTATE_SERVERVERSIONTOOLOW:
+      puts("Server version too low");
+      break;
+   case TX_CONNECTIONSTATE_SERVERVERSIONTOOHIGH:
+      puts("Server version too high");
+      break;
+   }
 }
 
 //=============================================================================

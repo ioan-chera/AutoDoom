@@ -14,6 +14,7 @@ enum class i_tobiiAvail
 
 i_tobiiAvail I_TobiiIsAvailable();
 bool I_TobiiInit();
+void I_TobiiUpdateWindow();
 void I_TobiiShutdown();
 
 #endif

@@ -1,3 +1,5 @@
+#include <SDL.h>
+#include <SDL_syswm.h>
 #include "eyex/EyeX.h"
 
 #include "../z_zone.h"
@@ -7,32 +9,116 @@
 static const TX_CONSTSTRING g_interactorId = "EyeId";
 
 static TX_CONTEXTHANDLE g_context;
+static TX_HANDLE g_globalInteractorSnapshot;
 static TX_TICKET g_connectionStateChangedTicket;
-static TX_TICKET g_queryTicket;
+static TX_TICKET g_eventHandlerTicket;
+static HWND g_mainWindow;
 
 //=============================================================================
 //
-// Helpers
+// Extra functions
 //
 
 //
-// Gets the window id conveniently
+// Sets up the snapshot
 //
-static bool I_getWindowId(TX_HANDLE snapshot, qstring &windowId)
+static bool I_initializeGlobalInteractorSnapshot()
 {
+   TX_HANDLE interactor = TX_EMPTY_HANDLE;
+   TX_FIXATIONDATAPARAMS params = { TX_FIXATIONDATAMODE_SENSITIVE };
    TX_RESULT result;
-   TX_SIZE size = 0;
-   result = txGetSnapshotWindowId(snapshot, 0, nullptr, &size);
+
+   result = txCreateGlobalInteractorSnapshot(g_context, g_interactorId,
+      &g_globalInteractorSnapshot, &interactor);
+   if(result != TX_RESULT_OK)
+      return false;
+
+   result = txCreateFixationDataBehavior(interactor, &params);
    if(result != TX_RESULT_OK)
    {
+      txReleaseObject(&interactor);
+      txReleaseObject(&g_globalInteractorSnapshot);
       return false;
    }
-   windowId.createSize(size);
-   result = txGetSnapshotWindowId(snapshot, 0, windowId.getBuffer(), &size);
+
+   txReleaseObject(&interactor);
+
+   return true;
+}
+
+//
+// Called when data arrives
+//
+static void I_onFixationDataEvent(TX_HANDLE behavior)
+{
+   TX_FIXATIONDATAEVENTPARAMS eventParams;
+   TX_FIXATIONDATAEVENTTYPE eventType;
+
+   TX_RESULT result;
+
+   result = txGetFixationDataEventParams(behavior, &eventParams);
    if(result != TX_RESULT_OK)
+      return;
+
+   eventType = eventParams.EventType;
+   if(eventType == TX_FIXATIONDATAEVENTTYPE_END)
+      return;
+
+   // TODO: get it relative to window
+   RECT rect;
+   if(!g_mainWindow || !GetWindowRect(g_mainWindow, &rect))
+      return;
+   if(rect.right == rect.left || rect.bottom == rect.top)
+      return;
+   double x, y;
+   x = double(eventParams.X - rect.left) / (rect.right - rect.left);
+   y = double(eventParams.Y - rect.top) / (rect.bottom - rect.top);
+
+   printf("%g %g\n", x, y);
+}
+
+struct handledata_t
+{
+   unsigned long processId;
+   HWND bestHandle;
+};
+
+static bool I_isMainWindow(HWND handle)
+{
+   return GetWindow(handle, GW_OWNER) == 0 && IsWindowVisible(handle);
+}
+
+static BOOL CALLBACK I_enumWindowsCallback(HWND handle, LPARAM lParam)
+{
+   handledata_t &data = *(handledata_t *)lParam;
+   unsigned long processId = 0;
+   GetWindowThreadProcessId(handle, &processId);
+   if(data.processId != processId || !I_isMainWindow(handle))
+      return TRUE;
+
+   data.bestHandle = handle;
+   g_mainWindow = data.bestHandle;
+   return FALSE;
+}
+
+static bool I_findMainWindow()
+{
+   //SDL_SysWMinfo wminfo;
+   //if(SDL_GetWMInfo(&wminfo) == -1)
+   //{
+   //   puts(SDL_GetError());
+   //   return false;
+   //}
+
+   handledata_t data;
+   data.processId = GetCurrentProcessId();
+   data.bestHandle = 0;
+   if(!EnumWindows(I_enumWindowsCallback, (LPARAM)&data))
    {
-      return false;
+      return GetLastError() == 0;
    }
+
+   g_mainWindow = data.bestHandle;
    return true;
 }
 
@@ -42,16 +128,39 @@ static bool I_getWindowId(TX_HANDLE snapshot, qstring &windowId)
 //
 
 //
+// When snapshot is committed
+//
+static void TX_CALLCONVENTION
+I_tobiiSnapshotCommitted(TX_CONSTHANDLE hAsyncData, TX_USERPARAM param)
+{
+   TX_RESULT result;
+   TX_RESULT asyncResult = TX_RESULT_UNKNOWN;
+   result = txGetAsyncDataResultCode(hAsyncData, &asyncResult);
+   if(result != TX_RESULT_OK)
+      puts("FAILED OBTAINING ASYNC DATA RESULT CODE");
+   if(asyncResult == TX_RESULT_OK)
+      puts("OK commmitting");
+   else if(asyncResult == TX_RESULT_CANCELLED)
+      puts("CANCELLED committing");
+   else
+      printf("FAILED committing (%d)\n", asyncResult);
+}
+
+//
 // Called when connection to server changed
 //
 static void TX_CALLCONVENTION 
 I_tobiiConnectionStateChanged(TX_CONNECTIONSTATE state, TX_USERPARAM userParam)
 {
-   // TODO: report on state
+   TX_RESULT result;
+
    switch(state)
    {
    case TX_CONNECTIONSTATE_CONNECTED:
       puts("Connected");
+      result = txCommitSnapshotAsync(g_globalInteractorSnapshot, I_tobiiSnapshotCommitted, nullptr);
+      if(result != TX_RESULT_OK)
+         puts("FAILED INITIALIZING DATA STREAM");
       break;
    case TX_CONNECTIONSTATE_DISCONNECTED:
       puts("Disconnected");
@@ -71,90 +180,31 @@ I_tobiiConnectionStateChanged(TX_CONNECTIONSTATE state, TX_USERPARAM userParam)
 }
 
 //
-// Called when getting queried by server
+// Handle events
 //
-static void TX_CALLCONVENTION I_tobiiQuery(
-   TX_CALLBACK_PARAM(TX_CONSTHANDLE) hAsyncData, TX_USERPARAM userParam)
+static void TX_CALLCONVENTION I_tobiiHandleEvent(TX_CONSTHANDLE hAsyncData, 
+   TX_USERPARAM userParam)
 {
+   TX_HANDLE event = TX_EMPTY_HANDLE;
+   TX_HANDLE behavior = TX_EMPTY_HANDLE;
+
    TX_RESULT result;
-   TX_HANDLE query = nullptr;
-   TX_HANDLE bounds = nullptr;
-   TX_HANDLE snapshot = nullptr;
-   TX_HANDLE interactor = nullptr;
-   qstring windowId;
 
-   result = txGetAsyncDataContent(hAsyncData, &query);
+   result = txGetAsyncDataContent(hAsyncData, &event);
+   if(result != TX_RESULT_OK)
+      return;
+
+   result = txGetEventBehavior(event, &behavior, TX_BEHAVIORTYPE_FIXATIONDATA);
    if(result != TX_RESULT_OK)
    {
-      puts("Failed getting content");
+      txReleaseObject(&event);
       return;
    }
 
-   result = txGetQueryBounds(query, &bounds);
-   if(result != TX_RESULT_OK)
-   {
-      puts("Failed getting query bounds");
-      txReleaseObject(&query);
-      return;
-   }
-   
-   TX_REAL x = 0, y = 0, width = 0, height = 0;
+   I_onFixationDataEvent(behavior);
 
-   result = txGetRectangularBoundsData(bounds, &x, &y, &width, &height);
-   if(result != TX_RESULT_OK)
-   {
-      puts("Failed getting rectangular bounds data");
-      txReleaseObject(&bounds);
-      txReleaseObject(&query);
-      return;
-   }
-
-   printf("%g %g %g %g\n", x, y, width, height);
-
-   txReleaseObject(&bounds);
-   txReleaseObject(&query);
-
-   //result = txCreateSnapshotForQuery(hAsyncData, &snapshot);
-   //if(result != TX_RESULT_OK)
-   //{
-   //   puts("Failed getting snapshot for query");
-   //   txReleaseObject(&snapshot);
-   //   txReleaseObject(&bounds);
-   //   return;
-   //}
-
-   //if(!I_getWindowId(snapshot, windowId))
-   //{
-   //   puts("Failed getting snapshot for query");
-   //   txReleaseObject(&snapshot);
-   //   txReleaseObject(&bounds);
-   //   return;
-   //}
-
-   //result = txCreateInteractor(snapshot, &interactor, g_interactorId, 
-   //   TX_LITERAL_ROOTID, windowId.constPtr());
-   //if(result != TX_RESULT_OK)
-   //{
-   //   puts("Failed getting snapshot for query");
-   //   txReleaseObject(&snapshot);
-   //   txReleaseObject(&bounds);
-   //   return;
-   //}
-   //// TODO: behaviors and stuff
-   //
-
-   //result = txCommitSnapshotAsync(snapshot, nullptr, nullptr);
-   //if(result != TX_RESULT_OK)
-   //{
-   //   puts("Failed committing snapshot");
-   //   txReleaseObject(&interactor);
-   //   txReleaseObject(&snapshot);
-   //   txReleaseObject(&bounds);
-   //   return;
-   //}
-   //// TODO: cleanup
-
-
+   txReleaseObject(&behavior);
+   txReleaseObject(&event);
 }
 
 //=============================================================================
@@ -187,6 +237,14 @@ i_tobiiAvail I_TobiiIsAvailable()
 }
 
 //
+// Finds the main window again
+//
+void I_TobiiUpdateWindow()
+{
+   I_findMainWindow();
+}
+
+//
 // Assuming it's available, initialize it
 //
 bool I_TobiiInit()
@@ -203,7 +261,15 @@ bool I_TobiiInit()
 
    result = txCreateContext(&g_context, TX_FALSE);
    if(result != TX_RESULT_OK)
+   {
+      I_TobiiShutdown();
       return false;
+   }
+   if(!I_initializeGlobalInteractorSnapshot())
+   {
+      I_TobiiShutdown();
+      return false;
+   }
 
    result = txRegisterConnectionStateChangedHandler(g_context, 
       &g_connectionStateChangedTicket, I_tobiiConnectionStateChanged, 
@@ -214,8 +280,8 @@ bool I_TobiiInit()
       return false;
    }
 
-   result = txRegisterQueryHandler(g_context, &g_queryTicket, I_tobiiQuery, 
-      nullptr);
+   result = txRegisterEventHandler(g_context, &g_eventHandlerTicket,
+      I_tobiiHandleEvent, nullptr);
    if(result != TX_RESULT_OK)
    {
       I_TobiiShutdown();
@@ -239,16 +305,22 @@ void I_TobiiShutdown()
 {
    if(!g_context)
       return;
-   if(g_queryTicket)
+
+   txDisableConnection(g_context);
+   
+   if(g_eventHandlerTicket)
    {
-      txUnregisterQueryHandler(g_context, g_queryTicket);
-      g_queryTicket = 0;
+      txUnregisterEventHandler(g_context, g_eventHandlerTicket);
+      g_eventHandlerTicket = 0;
    }
    if(g_connectionStateChangedTicket)
    {
       txUnregisterConnectionStateChangedHandler(g_context, g_connectionStateChangedTicket);
       g_connectionStateChangedTicket = 0;
    }
-   // TODO: txShutdownContext
+   
+   txReleaseObject(&g_globalInteractorSnapshot);
+   txShutdownContext(g_context, TX_CLEANUPTIMEOUT_DEFAULT, TX_FALSE);
    txReleaseContext(&g_context);
+   txUninitializeEyeX();
 }

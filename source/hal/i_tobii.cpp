@@ -97,8 +97,8 @@ static void I_onFixationDataEvent(TX_HANDLE behavior)
 
    std::lock_guard<std::mutex> lock(g_eventMutex);
 
-   g_event.x = 2 * (double(eventParams.X - rect.left) / (rect.right - rect.left) - 0.5);
-   g_event.y = 2 * (double(eventParams.Y - rect.top) / (rect.bottom - rect.top) - 0.5);
+   g_event.x = double(eventParams.X - rect.left) / (rect.right - rect.left);
+   g_event.y = double(eventParams.Y - rect.top) / (rect.bottom - rect.top);
    g_event.fired = true;
 }
 

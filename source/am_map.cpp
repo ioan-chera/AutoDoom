@@ -848,6 +848,20 @@ bool AM_Responder(event_t *ev)
          }
       }
 
+      if(ev->type == ev_eyetracking && !followplayer)
+      {
+         double x = ev->data2;
+         double y = ev->data3;
+         if(fabs(x) > 1. / 8)
+            m_paninc.x = FTOM(HORZ_PAN_SCALE(F_PANINC)) * x * 2;
+         else
+            m_paninc.x = 0;
+         if(fabs(y) > 1. / 8)
+            m_paninc.y = -FTOM(VERT_PAN_SCALE(F_PANINC)) * y * 2;
+         else
+            m_paninc.y = 0;
+      }
+
       // all other events are keydown only
       if(ev->type != ev_keydown)
          return false;

@@ -1,12 +1,37 @@
-#include <SDL.h>
-#include <SDL_syswm.h>
+
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
 #include "eyex/EyeX.h"
 
 #include "../z_zone.h"
 #include "i_tobii.h"
 #include "../m_qstr.h"
 
+#define INTMAX_MAX 0x7fffffffffffffffLL
+#include <mutex>
+
 static const TX_CONSTSTRING g_interactorId = "EyeId";
+
+//
+// Used for main window lookup
+//
+struct handledata_t
+{
+   unsigned long processId;
+   HWND bestHandle;
+};
+
+//
+// The eyetracking event, observed by the game
+//
+static struct
+{
+   double x;
+   double y;
+   bool fired;
+} g_event;
+
+static std::mutex g_eventMutex;
 
 static TX_CONTEXTHANDLE g_context;
 static TX_HANDLE g_globalInteractorSnapshot;
@@ -64,30 +89,30 @@ static void I_onFixationDataEvent(TX_HANDLE behavior)
    if(eventType == TX_FIXATIONDATAEVENTTYPE_END)
       return;
 
-   // TODO: get it relative to window
    RECT rect;
    if(!g_mainWindow || !GetWindowRect(g_mainWindow, &rect))
       return;
    if(rect.right == rect.left || rect.bottom == rect.top)
       return;
-   double x, y;
-   x = double(eventParams.X - rect.left) / (rect.right - rect.left);
-   y = double(eventParams.Y - rect.top) / (rect.bottom - rect.top);
 
-   printf("%g %g\n", x, y);
+   std::lock_guard<std::mutex> lock(g_eventMutex);
+
+   g_event.x = 2 * (double(eventParams.X - rect.left) / (rect.right - rect.left) - 0.5);
+   g_event.y = 2 * (double(eventParams.Y - rect.top) / (rect.bottom - rect.top) - 0.5);
+   g_event.fired = true;
 }
 
-struct handledata_t
-{
-   unsigned long processId;
-   HWND bestHandle;
-};
-
+//
+// Helper function to get whether a hwnd is main
+//
 static bool I_isMainWindow(HWND handle)
 {
    return GetWindow(handle, GW_OWNER) == 0 && IsWindowVisible(handle);
 }
 
+//
+// For window getting
+//
 static BOOL CALLBACK I_enumWindowsCallback(HWND handle, LPARAM lParam)
 {
    handledata_t &data = *(handledata_t *)lParam;
@@ -101,6 +126,9 @@ static BOOL CALLBACK I_enumWindowsCallback(HWND handle, LPARAM lParam)
    return FALSE;
 }
 
+//
+// For window getting
+//
 static bool I_findMainWindow()
 {
    //SDL_SysWMinfo wminfo;
@@ -295,6 +323,20 @@ bool I_TobiiInit()
       return false;
    }
 
+   return true;
+}
+
+//
+// Checks if there's an event
+//
+bool I_TobiiGetEvent(double &x, double &y)
+{
+   std::lock_guard<std::mutex> lock(g_eventMutex);
+   if(!g_event.fired)
+      return false;
+   g_event.fired = false;
+   x = g_event.x;
+   y = g_event.y;
    return true;
 }
 

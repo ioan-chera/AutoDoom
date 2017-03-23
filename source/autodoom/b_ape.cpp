@@ -36,6 +36,9 @@
 
 PlayerObserver gPlayerObservers[MAXPLAYERS];
 
+std::unordered_map<const BSubsec *, PODCollection<JumpObservation>>
+PlayerObserver::ssJumps;
+
 void PlayerObserver::initObservers()
 {
    for(int i = 0; i < MAXPLAYERS; ++i)
@@ -119,6 +122,10 @@ void PlayerObserver::observeJumping()
             // now when bot does pathfinding, use this as option
             const BSubsec &startss = botMap->pointInSubsector(mJump.start1.x,
                                                               mJump.start1.y);
+            mJump.dist1 = mJump.dist2 =
+            B_ExactDistance(pl->mo->x - mJump.start1.x,
+                            pl->mo->y - mJump.start1.y);
+
             bool found = false;
             for(auto &jump : ssJumps[&startss])
             {
@@ -139,12 +146,14 @@ void PlayerObserver::observeJumping()
                      jump.start1 = mJump.start1;
                      jump.ratio1 = newratio;
                      jump.vel1 = mJump.vel1;
+                     jump.dist1 = mJump.dist1;
                   }
                   else if(newratio > jump.ratio2)
                   {
                      jump.start2 = mJump.start2;
                      jump.ratio2 = newratio;
                      jump.vel2 = mJump.vel2;
+                     jump.dist2 = mJump.dist2;
                   }
                   else
                      break;

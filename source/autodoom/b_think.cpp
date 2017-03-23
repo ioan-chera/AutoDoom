@@ -30,6 +30,7 @@
 #include "../z_zone.h"
 
 #include "b_analysis.h"
+#include "b_ape.h"
 #include "b_itemlearn.h"
 #include "b_statistics.h"
 #include "b_think.h"
@@ -1350,9 +1351,64 @@ void Bot::doNonCombatAI()
 
     if (ss == m_path.last)
     {
-        nx = endCoord.x;
-        ny = endCoord.y;
-        m_lastPathSS = ss;
+       if(m_path.jump)
+       {
+          // We jump!
+          v2fixed_t p = B_ProjectionOnSegment(pl->mo->x, pl->mo->y,
+                                              m_path.jump->start1.x,
+                                              m_path.jump->start1.y,
+                                              m_path.jump->start2.x -
+                                              m_path.jump->start1.x,
+                                              m_path.jump->start2.y -
+                                              m_path.jump->start1.y);
+
+          double ratio = B_RatioAlongLine(m_path.jump->start1.x,
+                                          m_path.jump->start1.y,
+                                          m_path.jump->start2.x,
+                                          m_path.jump->start2.y,
+                                          pl->mo->x, pl->mo->y);
+
+          v2fixed_t desiredVel;
+          v2fixed_t desiredPos;
+          if(ratio < 0)
+          {
+             desiredVel.x = m_path.jump->vel1.x;
+             desiredVel.y = m_path.jump->vel1.y;
+             desiredPos = m_path.jump->start1;
+          }
+          else if(ratio > 1)
+          {
+             desiredVel.x = m_path.jump->vel2.x;
+             desiredVel.y = m_path.jump->vel2.y;
+             desiredPos = m_path.jump->start2;
+          }
+          else
+          {
+             desiredVel.x = static_cast<fixed_t>(m_path.jump->vel1.x * ratio +
+                                                 m_path.jump->vel2.x * (1 -
+                                                                        ratio));
+             desiredVel.y = static_cast<fixed_t>(m_path.jump->vel1.y * ratio +
+                                                 m_path.jump->vel2.y * (1 -
+                                                                        ratio));
+             desiredPos.x =
+             static_cast<fixed_t>(m_path.jump->start1.x * ratio +
+                                  m_path.jump->start2.x * (1 - ratio));
+             desiredPos.y =
+             static_cast<fixed_t>(m_path.jump->start1.y * ratio +
+                                  m_path.jump->start2.y * (1 - ratio));
+          }
+
+          nx = p.x;
+          ny = p.y;
+          B_Log("JUMP!");
+          m_runfast = true;
+       }
+       else
+       {
+          nx = endCoord.x;
+          ny = endCoord.y;
+       }
+       m_lastPathSS = ss;
     }
     else
     {

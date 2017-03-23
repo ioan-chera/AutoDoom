@@ -31,6 +31,7 @@
 #include <vector>
 #include "../z_zone.h"
 
+#include "b_ape.h"
 #include "b_path.h"
 #include "../d_player.h"
 #include "../e_things.h"
@@ -76,7 +77,8 @@ bool PathFinder::FindNextGoal(fixed_t x, fixed_t y, BotPath& path,
     int index = (int)(&source - first);
    
     db[1].ssvisit[index] = db[1].validcount;
-    db[1].ssprev[index] = nullptr;
+   db[1].ssprev[index].isjump = false;
+    db[1].ssprev[index].neigh = nullptr;
     db[1].ssdist[index] = 0;
 
     nhe.ss = &source;
@@ -108,12 +110,23 @@ bool PathFinder::FindNextGoal(fixed_t x, fixed_t y, BotPath& path,
            path.sss.insert(t);
             for (;;)
             {
-                n = db[1].ssprev[t - first];
-                if (!n)
-                    break;
-                path.inv.add(n);
-               path.sss.insert(n->myss);
-                t = n->myss;
+               const BSSLink &link = db[1].ssprev[t - first];
+               if(!link.isjump)
+               {
+                  n = link.neigh;
+                  if (!n)
+                     break;
+                  path.inv.add(n);
+                  path.sss.insert(n->myss);
+                  t = n->myss;
+               }
+               else
+               {
+                  path.jump = link.jump;
+                  path.last = link.jumpss;
+                  t = link.jumpss;
+                  path.sss.insert(t);
+               }
             }
             return true;
         }
@@ -158,20 +171,51 @@ bool PathFinder::FindNextGoal(fixed_t x, fixed_t y, BotPath& path,
                 }
             }
         }
+
+       for(const JumpObservation &jump : PlayerObserver::jumps(*t))
+       {
+          index = static_cast<int>(jump.destss - first);
+          tentative = getAdjustedDistance(db[1].ssdist[t - first],
+                                          jump.dist1 / 2 + jump.dist2 / 2, t);
+
+          if(db[1].ssvisit[index] != db[1].validcount ||
+             tentative < db[1].ssdist[index])
+          {
+             pushSubsectorToHeap(jump, *t, index, *jump.destss, tentative);
+          }
+       }
     }
     return false;
 }
 
-void PathFinder::pushSubsectorToHeap(const BNeigh& neigh, int index, const BSubsec& ss, fixed_t tentative)
+void PathFinder::pushSubsectorToHeap(const BNeigh& neigh, int index,
+                                     const BSubsec& ss, fixed_t tentative)
 {
     db[1].ssvisit[index] = db[1].validcount;
-    db[1].ssprev[index] = &neigh;
+   db[1].ssprev[index].isjump = false;
+    db[1].ssprev[index].neigh = &neigh;
     db[1].ssdist[index] = tentative;
 
     HeapEntry &nhe = m_dijkHeap.addNew();
     nhe.dist = tentative;
     nhe.ss = &ss;
     std::push_heap(m_dijkHeap.begin(), m_dijkHeap.end());
+}
+
+void PathFinder::pushSubsectorToHeap(const JumpObservation& jump,
+                                     const BSubsec &jumpss, int index,
+                                     const BSubsec& ss, fixed_t tentative)
+{
+   db[1].ssvisit[index] = db[1].validcount;
+   db[1].ssprev[index].isjump = true;
+   db[1].ssprev[index].jump = &jump;
+   db[1].ssprev[index].jumpss = &jumpss;
+   db[1].ssdist[index] = tentative;
+
+   HeapEntry &nhe = m_dijkHeap.addNew();
+   nhe.dist = tentative;
+   nhe.ss = &ss;
+   std::push_heap(m_dijkHeap.begin(), m_dijkHeap.end());
 }
 
 //
@@ -223,6 +267,14 @@ bool PathFinder::AvailableGoals(const BSubsec& source,
                 *back++ = neigh.otherss;
             }
         }
+       for(const JumpObservation &jump : PlayerObserver::jumps(*t))
+       {
+          if(db[0].ssvisit[jump.destss - first] != db[0].validcount)
+          {
+             db[0].ssvisit[jump.destss - first] = db[0].validcount;
+             *back++ = jump.destss;
+          }
+       }
     }
 
     return false;

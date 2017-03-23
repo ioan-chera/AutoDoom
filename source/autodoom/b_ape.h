@@ -46,6 +46,8 @@ struct JumpObservation
    double ratio2;
    v3fixed_t vel1;
    v3fixed_t vel2;
+   fixed_t dist1; // for short path finding
+   fixed_t dist2;
    bool success;
 };
 
@@ -62,6 +64,11 @@ public:
 
    void makeObservations();
 
+   static const PODCollection<JumpObservation> &jumps(const BSubsec &ss)
+   {
+      return ssJumps[&ss];
+   }
+
 private:
    void observeJumping();
 
@@ -74,7 +81,8 @@ private:
    // Jumping stuff
    bool mInAir;
    JumpObservation mJump;
-   std::unordered_map<const BSubsec *, PODCollection<JumpObservation>> ssJumps;
+   static std::unordered_map<const BSubsec *, PODCollection<JumpObservation>>
+   ssJumps;
 };
 
 extern PlayerObserver gPlayerObservers[MAXPLAYERS];

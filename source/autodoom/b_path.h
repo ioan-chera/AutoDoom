@@ -35,6 +35,8 @@
 #include "b_util.h"
 #include "../m_collection.h"
 
+struct JumpObservation;
+
 //
 // PathFinder
 //
@@ -62,6 +64,8 @@ public:
     const BSubsec*                  last;
     v2fixed_t                       start;
     BotPathEnd                      end;
+
+   const JumpObservation *jump;
 
     BotPath() :last(nullptr)
     {
@@ -121,12 +125,26 @@ private:
         v2fixed_t       v;
     };
 
+   struct BSSLink
+   {
+      bool isjump;
+      union
+      {
+         const BNeigh *neigh;
+         struct
+         {
+            const JumpObservation *jump;
+            const BSubsec *jumpss;
+         };
+      };
+   };
+
     struct DataBox
     {
         unsigned short  validcount;
         unsigned short* ssvisit;
         unsigned        sscount;
-        const BNeigh**  ssprev;
+        BSSLink*  ssprev;
         const BSubsec** ssqueue;
         fixed_t*        ssdist;  // used by dijkstra
 
@@ -168,6 +186,8 @@ private:
     
     void            pushSubsectorToHeap(const BNeigh& neigh, int index, 
                                         const BSubsec& ss, fixed_t tentative);
+   void pushSubsectorToHeap(const JumpObservation& jump, const BSubsec &jumpss,
+                            int index, const BSubsec& ss, fixed_t tentative);
     const TeleItem* checkTeleportation(const BNeigh& neigh);
    fixed_t getAdjustedDistance(fixed_t base, fixed_t add, const BSubsec *t) const;
 

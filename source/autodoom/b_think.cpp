@@ -69,6 +69,10 @@ enum
 
    WEAPONCHANGE_HYST_NUM = 3,
    WEAPONCHANGE_HYST_DEN = 2,
+
+   // fudge fractional distance for jump launching, to prevent tripping into
+   // pits
+   JUMP_LAUNCH_FRAC_FUDGE = 9 * FRACUNIT / 10,
 };
 
 enum
@@ -1298,6 +1302,155 @@ void Bot::doCombatAI(const PODCollection<Target>& targets)
 }
 
 //
+// Helper function to know if there's a straight path possible from m to n
+//
+inline static bool B_straightPath(fixed_t mx, fixed_t my, fixed_t nx, fixed_t ny, fixed_t height)
+{
+   return botMap->pathTraverse(mx, my, nx, ny, [height](const BotMap::Line &line, const divline_t &dl, fixed_t frac) -> bool  {
+      divline_t linedl;
+      linedl.x = line.v[0]->x;
+      linedl.y = line.v[0]->y;
+      linedl.dx = line.v[1]->x - linedl.x;
+      linedl.dy = line.v[1]->y - linedl.y;
+      int side = P_PointOnDivlineSide(dl.x, dl.y, &linedl);
+
+      if(!botMap->canPass(line.msec[side], line.msec[side ^ 1], height))
+         return false;
+      return true;
+   });
+}
+
+//
+// Returns true if the bot is going to move for a jump. Also sets the relevant
+// flags
+//
+bool Bot::checkJumpMovement(fixed_t &nx, fixed_t &ny)
+{
+   if(!m_path.jump)
+      return false;
+
+   fixed_t mx = pl->mo->x;
+   fixed_t my = pl->mo->y;
+
+   // Precalculated distances needed to run to get required velocity
+   static const fixed_t veldist[16] = {
+      0, 35452, 173303, 335151,
+      564929, 878774, 1295432, 1836631,
+      2527492, 3416639, 4575248, 6142229,
+      8311274, 11585369, 17446728, 40552956
+   };
+
+   // Trace path from current location to jump point
+//   v2fixed_t p = B_ProjectionOnSegment(mx, my, m_path.jump->start1.x,
+//                                       m_path.jump->start1.y,
+//                                       m_path.jump->start2.x -
+//                                       m_path.jump->start1.x,
+//                                       m_path.jump->start2.y -
+//                                       m_path.jump->start1.y);
+   double ratio = B_RatioAlongLine(m_path.jump->start1.x, m_path.jump->start1.y,
+                                   m_path.jump->start2.x, m_path.jump->start2.y,
+                                   mx, my);
+   v2fixed_t desiredVel;
+   v2fixed_t desiredPos;
+   if(ratio < 0)
+   {
+      desiredVel.x = m_path.jump->vel1.x;
+      desiredVel.y = m_path.jump->vel1.y;
+      desiredPos = m_path.jump->start1;
+   }
+   else if(ratio > 1)
+   {
+      desiredVel.x = m_path.jump->vel2.x;
+      desiredVel.y = m_path.jump->vel2.y;
+      desiredPos = m_path.jump->start2;
+   }
+   else
+   {
+      desiredVel.x = static_cast<fixed_t>(m_path.jump->vel1.x * ratio +
+                                          m_path.jump->vel2.x * (1 -
+                                                                 ratio));
+      desiredVel.y = static_cast<fixed_t>(m_path.jump->vel1.y * ratio +
+                                          m_path.jump->vel2.y * (1 -
+                                                                 ratio));
+      desiredPos.x =
+      static_cast<fixed_t>(m_path.jump->start1.x * ratio +
+                           m_path.jump->start2.x * (1 - ratio));
+      desiredPos.y =
+      static_cast<fixed_t>(m_path.jump->start1.y * ratio +
+                           m_path.jump->start2.y * (1 - ratio));
+   }
+   fixed_t velsize = B_ExactDistance(desiredVel.x, desiredVel.y);
+   if(!velsize)
+      return false;  // don't bother
+   v2fixed_t normdesvel;
+   normdesvel.x = FixedDiv(desiredVel.x, velsize);
+   normdesvel.y = FixedDiv(desiredVel.y, velsize);
+   int velbin = eclamp(velsize / FRACUNIT, 0,
+                       static_cast<int>(earrlen(veldist)) - 1);
+   if(ratio < 0 || ratio > 1)
+   {
+      // Outside the range. Move towards the launch position
+      B_Log("Launch from side!");
+   seeklaunch:
+      v2fixed_t launchPos = desiredPos;
+
+      fixed_t dist = veldist[velbin];
+      launchPos.x -= FixedMul(normdesvel.x, dist);
+      launchPos.y -= FixedMul(normdesvel.y, dist);
+
+      botMap->pathTraverse(desiredPos.x, desiredPos.y, launchPos.x, launchPos.y, [this, &launchPos](const BotMap::Line &line, const divline_t &dl, fixed_t frac) -> bool {
+
+         // Reduce frac to prevent falling right on line
+         frac = FixedMul(frac, JUMP_LAUNCH_FRAC_FUDGE);
+
+         // Update launching position
+         launchPos.x = dl.x + FixedMul(dl.dx, frac);
+         launchPos.y = dl.y + FixedMul(dl.dy, frac);
+
+         if(!botMap->canPass(line.msec[0], line.msec[1], pl->mo->height) ||
+            !botMap->canPass(line.msec[1], line.msec[0], pl->mo->height))
+         {
+            return false;
+         }
+         return true;
+      });
+
+      if(!B_straightPath(mx, my, launchPos.x, launchPos.y, pl->mo->height))
+         return false;
+      m_runfast = false;   // no need to run to the launching position
+      nx = launchPos.x;
+      ny = launchPos.y;
+      return true;
+   }
+
+   // Ratio is [0, 1]
+   // Check that we can actually reach the jump spot
+   if(!B_straightPath(mx, my, desiredPos.x, desiredPos.y, pl->mo->height))
+      return false;
+   // We have a straight path now. But do we have enough speed?
+   fixed_t dist = B_ExactDistance(desiredPos.x - mx, desiredPos.y - my);
+
+   // Get velocity in needed direction
+   fixed_t projsize = FixedMul(m_realVelocity.x, normdesvel.x) +
+   FixedMul(m_realVelocity.y, normdesvel.y);
+
+   int projbin = eclamp(projsize / FRACUNIT + 1, 0,
+                        static_cast<int>(earrlen(veldist)) - 1);
+   if((veldist[velbin] - veldist[projbin]) / 2 > dist)
+   {
+      // We have to pull back. Find the launching spot.
+      goto seeklaunch;
+   }
+
+   // JUMP!
+   m_runfast = true;
+   nx = desiredPos.x;
+   ny = desiredPos.y;
+   B_Log("JUMP!");
+   return true;
+}
+
+//
 // Bot::doNonCombatAI
 //
 // Does whatever needs to be done when not fighting
@@ -1349,65 +1502,13 @@ void Bot::doNonCombatAI()
     else
         endCoord = { 0, 0 };
 
+   bool followjump = checkJumpMovement(nx, ny);
+   if(!followjump)
+   {
     if (ss == m_path.last)
     {
-       if(m_path.jump)
-       {
-          // We jump!
-          v2fixed_t p = B_ProjectionOnSegment(pl->mo->x, pl->mo->y,
-                                              m_path.jump->start1.x,
-                                              m_path.jump->start1.y,
-                                              m_path.jump->start2.x -
-                                              m_path.jump->start1.x,
-                                              m_path.jump->start2.y -
-                                              m_path.jump->start1.y);
-
-          double ratio = B_RatioAlongLine(m_path.jump->start1.x,
-                                          m_path.jump->start1.y,
-                                          m_path.jump->start2.x,
-                                          m_path.jump->start2.y,
-                                          pl->mo->x, pl->mo->y);
-
-          v2fixed_t desiredVel;
-          v2fixed_t desiredPos;
-          if(ratio < 0)
-          {
-             desiredVel.x = m_path.jump->vel1.x;
-             desiredVel.y = m_path.jump->vel1.y;
-             desiredPos = m_path.jump->start1;
-          }
-          else if(ratio > 1)
-          {
-             desiredVel.x = m_path.jump->vel2.x;
-             desiredVel.y = m_path.jump->vel2.y;
-             desiredPos = m_path.jump->start2;
-          }
-          else
-          {
-             desiredVel.x = static_cast<fixed_t>(m_path.jump->vel1.x * ratio +
-                                                 m_path.jump->vel2.x * (1 -
-                                                                        ratio));
-             desiredVel.y = static_cast<fixed_t>(m_path.jump->vel1.y * ratio +
-                                                 m_path.jump->vel2.y * (1 -
-                                                                        ratio));
-             desiredPos.x =
-             static_cast<fixed_t>(m_path.jump->start1.x * ratio +
-                                  m_path.jump->start2.x * (1 - ratio));
-             desiredPos.y =
-             static_cast<fixed_t>(m_path.jump->start1.y * ratio +
-                                  m_path.jump->start2.y * (1 - ratio));
-          }
-
-          nx = p.x;
-          ny = p.y;
-          B_Log("JUMP!");
-          m_runfast = true;
-       }
-       else
-       {
-          nx = endCoord.x;
-          ny = endCoord.y;
-       }
+       nx = endCoord.x;
+       ny = endCoord.y;
        m_lastPathSS = ss;
     }
     else
@@ -1501,6 +1602,7 @@ void Bot::doNonCombatAI()
             return;
         }
     }
+   }
 
     mx = pl->mo->x;
     my = pl->mo->y;

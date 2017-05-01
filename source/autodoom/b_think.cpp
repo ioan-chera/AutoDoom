@@ -1326,8 +1326,9 @@ inline static bool B_straightPath(fixed_t mx, fixed_t my, fixed_t nx, fixed_t ny
 //
 bool Bot::checkJumpMovement(fixed_t &nx, fixed_t &ny)
 {
-   if(!m_path.jump)
+   if(!m_path.jump || !m_path.jump->takeoff)
       return false;
+   const BotMap::Line &takeoff = *m_path.jump->takeoff;
 
    fixed_t mx = pl->mo->x;
    fixed_t my = pl->mo->y;
@@ -1347,18 +1348,27 @@ bool Bot::checkJumpMovement(fixed_t &nx, fixed_t &ny)
 //                                       m_path.jump->start1.x,
 //                                       m_path.jump->start2.y -
 //                                       m_path.jump->start1.y);
-   double ratio = B_RatioAlongLine(m_path.jump->start1.x, m_path.jump->start1.y,
-                                   m_path.jump->start2.x, m_path.jump->start2.y,
-                                   mx, my);
+
+   double ratio, ratio1, ratio2;
+   if(m_path.jump->ratio1 < m_path.jump->ratio2)
+   {
+      ratio1 = m_path.jump->ratio1;
+      ratio2 = m_path.jump->ratio2;
+      ratio = B_RatioAlongLine(takeoff.v[0]->x, takeoff.v[0]->y,
+                               takeoff.v[1]->x, takeoff.v[1]->y, mx, my);
+   }
+   else
+      ratio1 = ratio = ratio2 = 0;
+
    v2fixed_t desiredVel;
    v2fixed_t desiredPos;
-   if(ratio < 0)
+   if(ratio < ratio1)
    {
       desiredVel.x = m_path.jump->vel1.x;
       desiredVel.y = m_path.jump->vel1.y;
       desiredPos = m_path.jump->start1;
    }
-   else if(ratio > 1)
+   else if(ratio > ratio2)
    {
       desiredVel.x = m_path.jump->vel2.x;
       desiredVel.y = m_path.jump->vel2.y;
@@ -1417,7 +1427,7 @@ bool Bot::checkJumpMovement(fixed_t &nx, fixed_t &ny)
 
       if(!B_straightPath(mx, my, launchPos.x, launchPos.y, pl->mo->height))
          return false;
-      m_runfast = false;   // no need to run to the launching position
+//      m_runfast = false;   // no need to run to the launching position
       nx = launchPos.x;
       ny = launchPos.y;
       return true;
@@ -1443,7 +1453,7 @@ bool Bot::checkJumpMovement(fixed_t &nx, fixed_t &ny)
    }
 
    // JUMP!
-   m_runfast = true;
+//   m_runfast = true;
    nx = desiredPos.x;
    ny = desiredPos.y;
    B_Log("JUMP!");
@@ -1684,7 +1694,7 @@ void Bot::doNonCombatAI()
         else
         {
             if(!m_runfast)
-                cruiseControl(nx, ny, moveslow);
+                cruiseControl(nx, ny, !followjump && moveslow, followjump);
             else
                 cmd->sidemove -= FixedMul((moveslow ? 1 : 2)
                                           * pl->pclass->sidemove[moveslow ? 0 : 1],
@@ -1779,10 +1789,10 @@ bool Bot::stepLedges(bool avoid, fixed_t nx, fixed_t ny)
    });
 }
 
-void Bot::cruiseControl(fixed_t nx, fixed_t ny, bool moveslow)
+void Bot::cruiseControl(fixed_t nx, fixed_t ny, bool moveslow, bool movejump)
 {
 
-   if(stepLedges(false, nx, ny))
+   if(!movejump && stepLedges(false, nx, ny))
       return;
 
 //    const fixed_t runSpeed = moveslow && !m_runfast ? 8 * FRACUNIT

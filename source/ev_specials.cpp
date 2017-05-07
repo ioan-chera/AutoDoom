@@ -779,6 +779,7 @@ static EV_SpecHash DOOMSpecHash;
 static EV_SpecHash HereticSpecHash;
 static EV_SpecHash HexenSpecHash;
 static EV_SpecHash UDMFEternitySpecHash;
+static EV_SpecHash ACSSpecHash;
 
 static EV_SpecNameHash DOOMSpecNameHash;
 static EV_SpecNameHash HexenSpecNameHash;
@@ -863,7 +864,7 @@ static void EV_initHexenSpecHash()
 //
 // EV_initUDMFEternitySpecHash
 //
-// Initializes the Hexen special bindings hash table the first time it is
+// Initializes the UDMF special bindings hash table the first time it is
 // called.
 //
 static void EV_initUDMFEternitySpecHash()
@@ -874,6 +875,19 @@ static void EV_initUDMFEternitySpecHash()
    EV_initSpecHash(UDMFEternitySpecHash, UDMFEternityBindings, UDMFEternityBindingsLen);
    EV_initSpecNameHash(UDMFEternitySpecNameHash, UDMFEternityBindings, UDMFEternityBindingsLen);
    EV_initHexenSpecHash();
+}
+
+//
+// Initializes the ACS special bindings hash table the first time it is
+// called.
+//
+static void EV_initACSSpecHash()
+{
+   if(ACSSpecHash.isInitialized())
+      return;
+
+   EV_initSpecHash(ACSSpecHash, ACSBindings, ACSBindingsLen);
+   EV_initUDMFEternitySpecHash();
 }
 
 //
@@ -1091,6 +1105,41 @@ ev_action_t *EV_UDMFEternityActionForSpecial(int special)
 
 }
 
+
+//
+// Returns a special binding from the ACS gamemode's bindings array,
+// regardless of the current gamemode or map format. Returns NULL if
+// the special is not bound to an action.
+//
+ev_binding_t *EV_ACSBindingForSpecial(int special)
+{
+   ev_binding_t *bind;
+
+   EV_initACSSpecHash(); // ensure table is initialized
+
+  // Try ACS's bindings first. If nothing is found, defer to UDMFEternity's 
+  // bindings, then to Hexen's.
+   if(!(bind = ACSSpecHash.objectForKey(special)))
+   {
+      if(!(bind = UDMFEternitySpecHash.objectForKey(special)))
+         bind = HexenSpecHash.objectForKey(special);
+   }
+
+   return bind;
+}
+//
+// Returns a special binding from the ACS's bindings array,
+// regardless of the current gamemode or map format. Returns NULL if
+// the special is not bound to an action.
+//
+ev_action_t *EV_ACSActionForSpecial(int special)
+{
+   ev_binding_t *bind = EV_ACSBindingForSpecial(special);
+
+   return bind ? bind->action : NULL;
+
+}
+
 //
 // EV_BindingForName
 //
@@ -1207,6 +1256,40 @@ static ev_action_t *EV_ActionForInstance(ev_instance_t &instance)
    return EV_ActionForSpecial(instance.special);
 }
 
+//
+// Lookup the number to use in the local map's bindings for a special number
+// provided in ACS.
+//
+int EV_ActionForACSAction(int acsActionNum)
+{
+   switch(LevelInfo.mapFormat)
+   {
+   case LEVEL_FORMAT_UDMF_ETERNITY:
+   case LEVEL_FORMAT_HEXEN:
+      // The numbers already match in these formats.
+      return acsActionNum;
+   default:
+      // Find the UDMF binding for this action number, and then return its
+      // ExtraData equivalent if it has one. Otherwise, zero is returned.
+      {
+         // initialize the cross-table pointers
+         EV_InitUDMFToExtraDataLookup();
+
+         ev_binding_t *pBind;
+         if((pBind = EV_UDMFEternityBindingForSpecial(acsActionNum)))
+         {
+            if(pBind->pEDBinding)
+               return pBind->pEDBinding->actionNumber;
+            else
+               return 0;
+         }
+      }
+      break;
+   }
+
+   return 0;
+}
+
 //=============================================================================
 //
 // Lockdef ID Lookups
@@ -1272,7 +1355,7 @@ int EV_LockDefIDForSpecial(int special)
 // Test lockdef ID bindings for the current gamemode based on a line. 
 // Returns zero when there's no lockdef ID binding for that special.
 //
-int EV_LockDefIDForLine(line_t *line)
+int EV_LockDefIDForLine(const line_t *line)
 {
    ev_action_t *action = EV_ActionForSpecial(line->special);
 
@@ -1326,9 +1409,19 @@ static bool EV_checkSpac(ev_action_t *action, ev_instance_t *instance)
       line_t *line  = instance->line;
       int     flags = 0;
 
-      REQUIRE_ACTOR(thing);
       REQUIRE_LINE(line);
 
+      if(instance->poly)
+      {
+         // check 1S only flag -- if set, must be activated from first side
+         if((line->extflags & EX_ML_1SONLY) && instance->side != 0)
+            return false;
+         flags = EX_ML_POLYOBJECT | EX_ML_CROSS;
+         return instance->spac == SPAC_CROSS &&
+            (line->extflags & flags) == flags;
+      }
+      REQUIRE_ACTOR(thing);
+      
       // check player / monster / missile / push enable flags
       if(thing->player)                    // treat as player?
          flags |= EX_ML_PLAYER;
@@ -1413,7 +1506,8 @@ static int EV_ActivateSpecial(ev_action_t *action, ev_instance_t *instance)
 // Populates the ev_instance_t from separate arguments and then activates the
 // special.
 //
-bool EV_ActivateSpecialLineWithSpac(line_t *line, int side, Mobj *thing, int spac)
+bool EV_ActivateSpecialLineWithSpac(line_t *line, int side, Mobj *thing,
+   polyobj_t *poly, int spac)
 {
    ev_action_t *action;
    INIT_STRUCT(ev_instance_t, instance);
@@ -1422,6 +1516,7 @@ bool EV_ActivateSpecialLineWithSpac(line_t *line, int side, Mobj *thing, int spa
    instance.actor   = thing;
    instance.args    = line->args;
    instance.line    = line;
+   instance.poly    = poly;
    instance.special = line->special;
    instance.side    = side;
    instance.spac    = spac;
@@ -1473,7 +1568,8 @@ bool EV_ActivateSpecialNum(int special, int *args, Mobj *thing)
 //
 // Activate a special for ACS.
 //
-int EV_ActivateACSSpecial(line_t *line, int special, int *args, int side, Mobj *thing)
+int EV_ActivateACSSpecial(line_t *line, int special, int *args, int side, Mobj *thing,
+   polyobj_t *poly)
 {
    ev_action_t *action;
    INIT_STRUCT(ev_instance_t, instance);
@@ -1482,13 +1578,14 @@ int EV_ActivateACSSpecial(line_t *line, int special, int *args, int side, Mobj *
    instance.actor   = thing;
    instance.args    = args;
    instance.line    = line;
+   instance.poly    = poly;
    instance.special = special;
    instance.side    = side;
    instance.spac    = SPAC_CROSS;
    instance.tag     = args[0];
 
    // get action (always from within the Hexen namespace)
-   if(!(action = EV_HexenActionForSpecial(special)))
+   if(!(action = EV_ACSActionForSpecial(special)))
       return false;
 
    return EV_ActivateSpecial(action, &instance);

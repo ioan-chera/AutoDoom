@@ -58,7 +58,20 @@ struct maplumpindex_t
 enum
 {
    // colormap has been set by UDMF or ExtraData
-   UDMF_SECTOR_INIT_COLORMAPPED = 1,
+   UDMF_SECTOR_INIT_COLOR_TOP = 1,
+   UDMF_SECTOR_INIT_COLOR_MIDDLE = 2,
+   UDMF_SECTOR_INIT_COLOR_BOTTOM = 4,
+};
+
+//
+// Data for UDMF attaching
+//
+struct udmfattach_t
+{
+   int floorid;
+   int ceilingid;
+   int attachfloor;
+   int attachceiling;
 };
 
 //
@@ -67,15 +80,32 @@ enum
 //
 class UDMFSetupSettings : public ZoneObject
 {
-   unsigned *mSectorInitFlags;
+   struct sectorinfo_t
+   {
+      unsigned flags;
+      int portalceiling;
+      int portalfloor;
+      udmfattach_t attach;
+   };
+
+   struct lineinfo_t
+   {
+      int portal;
+   };
+
+   sectorinfo_t *mSectorInitData;
+   lineinfo_t *mLineInitData;
+
    void useSectorCount();
+   void useLineCount();
 public:
-   UDMFSetupSettings() : mSectorInitFlags(nullptr)
+   UDMFSetupSettings() : mSectorInitData(nullptr), mLineInitData(nullptr)
    {
    }
    ~UDMFSetupSettings()
    {
-      efree(mSectorInitFlags);
+      efree(mSectorInitData);
+      efree(mLineInitData);
    }
 
    //
@@ -84,11 +114,50 @@ public:
    void setSectorFlag(int index, unsigned flag)
    {
       useSectorCount();
-      mSectorInitFlags[index] |= flag;
+      mSectorInitData[index].flags |= flag;
    }
    bool sectorIsFlagged(int index, unsigned flag) const
    {
-      return mSectorInitFlags && !!(mSectorInitFlags[index] & flag);
+      return mSectorInitData && !!(mSectorInitData[index].flags & flag);
+   }
+   void setSectorPortals(int index, int portalceiling, int portalfloor)
+   {
+      useSectorCount();
+      mSectorInitData[index].portalceiling = portalceiling;
+      mSectorInitData[index].portalfloor = portalfloor;
+   }
+   void getSectorPortals(int index, int &portalceiling, int &portalfloor) const
+   {
+      if(mSectorInitData)
+      {
+         portalceiling = mSectorInitData[index].portalceiling;
+         portalfloor = mSectorInitData[index].portalfloor;
+         return;
+      }
+      // no data
+      portalceiling = 0;
+      portalfloor = 0;
+   }
+
+   void setLinePortal(int index, int portal)
+   {
+      useLineCount();
+      mLineInitData[index].portal = portal;
+   }
+   int getLinePortal(int index) const
+   {
+      if(mLineInitData)
+         return mLineInitData[index].portal;
+      return 0;
+   }
+
+   //
+   // Attaching. This merely gets a reference you can modify
+   //
+   udmfattach_t &getAttachInfo(int index)
+   {
+      useSectorCount();
+      return mSectorInitData[index].attach;
    }
 };
 
@@ -120,7 +189,7 @@ public:
    void loadVertices() const;
    void loadSectors(UDMFSetupSettings &setupSettings) const;
    void loadSidedefs() const;
-   bool loadLinedefs();
+   bool loadLinedefs(UDMFSetupSettings &setupSettings);
    bool loadSidedefs2();
    bool loadThings();
 
@@ -180,30 +249,42 @@ private:
    class ULinedef : public ZoneObject
    {
    public:
-      int identifier;
-      int v1, v2;
+      int identifier;   // tag
+      int v1, v2;       // vertices
 
+      // Classic
       bool blocking, blockmonsters, twosided, dontpegtop, dontpegbottom, secret,
       blocksound, dontdraw, mapped;
 
-      bool passuse;
-      bool translucent, jumpover, blockfloaters;
+      // Inherited from games
+      bool passuse;                                // Boom
+      bool translucent, jumpover, blockfloaters;   // Strife
 
+      // Activation specials
       bool playercross, playeruse, monstercross, monsteruse, impact, playerpush,
-      monsterpush, missilecross, repeatspecial;
+      monsterpush, missilecross, repeatspecial, polycross;
 
-      int special, arg[5];
-      int sidefront, sideback;
+      int special, arg[5];       // linedef special and args
+      int sidefront, sideback;   // sidedef references
 
-      bool v1set, v2set, sfrontset;
-      int errorline;
+      // auxiliary fields
+      bool v1set, v2set, sfrontset; // (mandatory field internal flags)
+      int errorline;                // parsing error (not a property)
 
       // Eternity
-      bool midtex3d, firstsideonly, blockeverything, zoneboundary, clipmidtex,
-      midtex3dimpassible;
-      float alpha;
-      qstring renderstyle;
-      qstring tranmap;
+      bool midtex3d;             // 3dmidtex
+      bool firstsideonly;        // special only activateable from front side
+      bool blockeverything;      // zdoomish blocks-everything
+      bool zoneboundary;         // zdoomish audio reverb boundary
+      bool clipmidtex;           // zdoomish cut rendering of middle texture
+      bool midtex3dimpassible;   // zdoomish trick to make projectiles pass
+      bool lowerportal;          // lower part acts as a portal extension
+      bool upperportal;          // upper part acts as a portal extension
+      int portal;
+      float alpha;               // opacity ratio
+      qstring renderstyle;       // zdoomish renderstyle (add, translucent)
+      qstring tranmap;           // boomish translucency lump
+      
 
       ULinedef() : identifier(-1), sideback(-1), alpha(1)
       {
@@ -281,6 +362,11 @@ private:
       int special;
       int identifier;
 
+      int floorid, ceilingid;
+      int attachfloor, attachceiling;
+
+      qstring soundsequence;
+
       bool tfloorset, tceilset;
 
       // ED's portalflags.ceiling, and overlayalpha.ceiling
@@ -290,7 +376,7 @@ private:
       bool         portal_ceil_blocksound;
       bool         portal_ceil_useglobaltex;
       qstring      portal_ceil_overlaytype; // OVERLAY and ADDITIVE consolidated into a single property
-      unsigned int portal_ceil_alpha;
+      double       alphaceiling;
 
       // ED's portalflags.floor, and overlayalpha.floor
       bool         portal_floor_disabled;
@@ -299,13 +385,16 @@ private:
       bool         portal_floor_blocksound;
       bool         portal_floor_useglobaltex;
       qstring      portal_floor_overlaytype; // OVERLAY and ADDITIVE consolidated into a single property
-      unsigned int portal_floor_alpha;
+      double       alphafloor;
+
+      int          portalceiling;   // floor portal id
+      int          portalfloor;     // floor portal id
 
       USector() : xscalefloor(1.0), yscalefloor(1.0), xscaleceiling(1.0), yscaleceiling(1.0),
          friction(-1), damagetype("Unknown"), floorterrain("@flat"), ceilingterrain("@flat"),
          colormaptop("@default"), colormapmid("@default"), colormapbottom("@default"),
-         portal_ceil_overlaytype("none"), portal_ceil_alpha(255),
-         portal_floor_overlaytype("none"), portal_floor_alpha(255),
+         portal_ceil_overlaytype("none"), alphaceiling(1.0),
+         portal_floor_overlaytype("none"), alphafloor(1.0),
          lightlevel(160)
       {
       }
@@ -323,6 +412,9 @@ private:
       bool dormant, class1, class2, class3;
       bool standing, strifeally, translucent, invisible;
       int special, arg[5];
+
+      // new stuff
+      double health;
 
       bool xset, yset, typeset;
    };

@@ -36,6 +36,7 @@
 #include "d_main.h"
 #include "doomstat.h"
 #include "dstrings.h"
+#include "e_exdata.h"
 #include "e_inventory.h"
 #include "ev_specials.h"
 #include "g_bind.h"
@@ -607,7 +608,7 @@ static void AM_loadPics()
    // haleyjd 10/09/05: get format string from GameModeInfo
    for(int i = 0; i < 10; i++)
    {
-      sprintf(namebuf, GameModeInfo->markNumFmt, i);
+      snprintf(namebuf, earrlen(namebuf), GameModeInfo->markNumFmt, i);
       marknums[i] = PatchLoader::CacheName(wGlobalDir, namebuf, PU_STATIC);
    }
 
@@ -802,8 +803,6 @@ static void AM_maxOutWindowScale()
 //
 bool AM_Responder(event_t *ev)
 {
-   static int bigstate = 0;
-  
    // haleyjd 07/07/04: dynamic bindings
    int action = G_KeyResponder(ev, kac_map);
 
@@ -875,6 +874,8 @@ bool AM_Responder(event_t *ev)
       // all other events are keydown only
       if(ev->type != ev_keydown)
          return false;
+
+      static int bigstate = 0;
 
       switch(action)
       {
@@ -1529,7 +1530,7 @@ static void AM_drawGrid(int color)
 //
 // jff 4/3/98 add routine to get color of generalized keyed door
 //
-static int AM_DoorColor(line_t *line)
+static int AM_DoorColor(const line_t *line)
 {
    int lockdefID = EV_LockDefIDForLine(line);
 
@@ -1551,9 +1552,9 @@ static int AM_DoorColor(line_t *line)
 // Returns true if line is an exit and the exit map color is
 // defined; returns false otherwise.
 //
-inline static bool AM_drawAsExitLine(line_t *line)
+inline static bool AM_drawAsExitLine(const line_t *line)
 {
-   ev_action_t *action = EV_ActionForSpecial(line->special);
+   const ev_action_t *action = EV_ActionForSpecial(line->special);
    return (mapcolor_exit && (EV_CompositeActionFlags(action) & EV_ISMAPPEDEXIT));
 }
 
@@ -1563,7 +1564,7 @@ inline static bool AM_drawAsExitLine(line_t *line)
 // Returns true if a 1S line is or was secret and the secret line
 // map color is defined; returns false otherwise.
 //
-inline static bool AM_drawAs1sSecret(line_t *line)
+inline static bool AM_drawAs1sSecret(const line_t *line)
 {
    return (mapcolor_secr &&
            ((map_secret_after &&
@@ -1579,7 +1580,7 @@ inline static bool AM_drawAs1sSecret(line_t *line)
 // Returns true if a 2S line is or was secret and the secret line
 // map color is defined; returns false otherwise.
 //
-inline static bool AM_drawAs2sSecret(line_t *line)
+inline static bool AM_drawAs2sSecret(const line_t *line)
 {
    //jff 2/16/98 fixed bug: special was cleared after getting it
    
@@ -1605,9 +1606,9 @@ inline static bool AM_drawAs2sSecret(line_t *line)
 // Returns true if a line is a teleporter and the teleporter map
 // color is defined; returns false otherwise.
 //
-inline static bool AM_drawAsTeleporter(line_t *line)
+inline static bool AM_drawAsTeleporter(const line_t *line)
 {
-   ev_action_t *action = EV_ActionForSpecial(line->special);   
+   const ev_action_t *action = EV_ActionForSpecial(line->special);   
    return (mapcolor_tele && !(line->flags & ML_SECRET) && 
            (EV_CompositeActionFlags(action) & EV_ISTELEPORTER));
 }
@@ -1618,7 +1619,7 @@ inline static bool AM_drawAsTeleporter(line_t *line)
 // Returns true if a line is a locked door for which the corresponding
 // map color is defined; returns false otherwise.
 //
-inline static bool AM_drawAsLockedDoor(line_t *line)
+inline static bool AM_drawAsLockedDoor(const line_t *line)
 {
    return E_GetLockDefColor(EV_LockDefIDForLine(line)) != 0;
 }
@@ -1628,7 +1629,7 @@ inline static bool AM_drawAsLockedDoor(line_t *line)
 //
 // Returns true if a door has no thinker, false otherwise.
 //
-inline static bool AM_isDoorClosed(line_t *line)
+inline static bool AM_isDoorClosed(const line_t *line)
 {
    return !line->backsector->ceilingdata ||
           !line->backsector->ceilingdata->isDescendantOf(RTTI(VerticalDoorThinker));
@@ -1640,11 +1641,37 @@ inline static bool AM_isDoorClosed(line_t *line)
 // Returns true if a door is closed, not secret, and closed door
 // map color is defined; returns false otherwise.
 //
-inline static bool AM_drawAsClosedDoor(line_t *line)
+inline static bool AM_drawAsClosedDoor(const line_t *line)
 {
    return (mapcolor_clsd &&  
            !(line->flags & ML_SECRET) &&    // non-secret closed door
-           AM_isDoorClosed(line));
+           AM_isDoorClosed(line) &&
+           (line->backsector->floorheight == line->backsector->ceilingheight ||
+            line->frontsector->floorheight == line->backsector->ceilingheight));
+}
+
+//
+// True if floor or ceiling heights are different, lower or upper portal aware
+//
+inline static bool AM_differentFloor(const line_t &line)
+{
+   return line.frontsector->floorheight > line.backsector->floorheight ||
+   (line.frontsector->floorheight < line.backsector->floorheight &&
+    (!(line.extflags & EX_ML_LOWERPORTAL) || 
+       !(line.backsector->f_pflags & PS_PASSABLE)));
+}
+inline static bool AM_differentCeiling(const line_t &line)
+{
+   return line.frontsector->ceilingheight < line.backsector->ceilingheight ||
+   (line.frontsector->ceilingheight > line.backsector->ceilingheight &&
+    (!(line.extflags & EX_ML_UPPERPORTAL) ||
+       !(line.backsector->c_pflags & PS_PASSABLE)));
+}
+
+inline static bool AM_dontDraw(const line_t &line)
+{
+   return line.flags & ML_DONTDRAW ||
+   line.frontsector->intflags & SIF_PORTALBOX;
 }
 
 //
@@ -1676,7 +1703,7 @@ static void AM_drawWalls()
    {
       for(i = 0; i < numlines; ++i)
       {
-         line_t *line = &lines[i];
+         const line_t *line = &lines[i];
 
          if(line->frontsector->groupid == plrgroup)
             continue;
@@ -1700,12 +1727,11 @@ static void AM_drawWalls()
          {
             // check for DONTDRAW flag; those lines are only visible
             // if using the IDDT cheat.
-            if((line->flags & ML_DONTDRAW) && !ddt_cheating)
+            if(AM_dontDraw(*line) && !ddt_cheating)
                continue;
 
             if(!line->backsector ||
-               line->backsector->floorheight != line->frontsector->floorheight ||
-               line->backsector->ceilingheight != line->frontsector->ceilingheight)
+               AM_differentFloor(*line) || AM_differentCeiling(*line))
             {
                AM_drawMline(&l, mapcolor_prtl);
             }
@@ -1713,11 +1739,10 @@ static void AM_drawWalls()
          else if(plr->powers[pw_allmap]) // computermap visible lines
          {
             // now draw the lines only visible because the player has computermap
-            if(!(line->flags & ML_DONTDRAW)) // invisible flag lines do not show
+            if(!AM_dontDraw(*line)) // invisible flag lines do not show
             {
                if(!line->backsector ||
-                  line->backsector->floorheight != line->frontsector->floorheight ||
-                  line->backsector->ceilingheight != line->frontsector->ceilingheight)
+                  AM_differentFloor(*line) || AM_differentCeiling(*line))
                {
                   AM_drawMline(&l, mapcolor_prtl);
                }
@@ -1729,7 +1754,7 @@ static void AM_drawWalls()
    // draw the unclipped visible portions of all lines
    for(i = 0; i < numlines; i++)
    {
-      line_t *line = &lines[i];
+      const line_t *line = &lines[i];
 
       l.a.x = line->v1->fx;
       l.a.y = line->v1->fy;
@@ -1757,7 +1782,7 @@ static void AM_drawWalls()
       {
          // check for DONTDRAW flag; those lines are only visible
          // if using the IDDT cheat.
-         if((line->flags & ML_DONTDRAW) && !ddt_cheating)
+         if(AM_dontDraw(*line) && !ddt_cheating)
             continue;
 
          if(!line->backsector) // 1S lines
@@ -1818,13 +1843,11 @@ static void AM_drawWalls()
             {
                AM_drawMline(&l, mapcolor_secr); // line bounding secret sector
             } 
-            else if(line->backsector->floorheight !=
-                    line->frontsector->floorheight)
+            else if(AM_differentFloor(*line))
             {
                AM_drawMline(&l, mapcolor_fchg); // floor level change
             }
-            else if(line->backsector->ceilingheight !=
-                    line->frontsector->ceilingheight)
+            else if(AM_differentCeiling(*line))
             {
                AM_drawMline(&l, mapcolor_cchg); // ceiling level change
             }
@@ -1837,13 +1860,10 @@ static void AM_drawWalls()
       else if(plr->powers[pw_allmap]) // computermap visible lines
       {
          // now draw the lines only visible because the player has computermap
-         if(!(line->flags & ML_DONTDRAW)) // invisible flag lines do not show
+         if(!AM_dontDraw(*line)) // invisible flag lines do not show
          {
-            if(mapcolor_flat ||
-               !line->backsector ||
-               line->backsector->floorheight != line->frontsector->floorheight ||
-               line->backsector->ceilingheight != line->frontsector->ceilingheight
-              )
+            if(mapcolor_flat || !line->backsector ||
+               AM_differentFloor(*line) || AM_differentCeiling(*line))
             {
                AM_drawMline(&l, mapcolor_unsn);
             }

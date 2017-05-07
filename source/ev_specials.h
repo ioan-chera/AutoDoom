@@ -34,6 +34,7 @@
 struct ev_action_t;
 struct line_t;
 class  Mobj;
+struct polyobj_s;
 
 // Action flags
 enum EVActionFlags
@@ -62,15 +63,16 @@ enum EVActionFlags
 // Data related to an instance of a special activation.
 struct ev_instance_t
 {
-   Mobj   *actor;   // actor, if any
-   line_t *line;    // line, if any
-   int     special; // special to activate (may == line->special)
-   int    *args;    // arguments (may point to line->args)
-   int     tag;     // tag (may == line->tag or line->args[0]) // ioanch 20160304: only args[0]
-   int     side;    // side of activation
-   int     spac;    // special activation type
-   int     gentype; // generalized type, if is generalized (-1 otherwise)
-   int     genspac; // generalized activation type, if generalized
+   Mobj      *actor;   // actor, if any
+   line_t    *line;    // line, if any
+   int        special; // special to activate (may == line->special)
+   int       *args;    // arguments (may point to line->args)
+   int        tag;     // tag (may == line->args[0])
+   int        side;    // side of activation
+   int        spac;    // special activation type
+   int        gentype; // generalized type, if is generalized (-1 otherwise)
+   int        genspac; // generalized activation type, if generalized
+   polyobj_s *poly;    // possible polyobject activator
 };
 
 //
@@ -129,9 +131,11 @@ struct ev_action_t
 // Binds a line special action to a specific action number.
 struct ev_binding_t
 {
-   int actionNumber;    // line action number
-   ev_action_t *action; // the actual action to execute
-   const char *name;    // name, if this binding has one
+   int           actionNumber; // line action number
+   ev_action_t  *action;       // the actual action to execute
+   const char   *name;         // name, if this binding has one
+
+   ev_binding_t *pEDBinding;   // corresponding ExtraData binding, if one exists
 
    DLListItem<ev_binding_t> links;     // hash links by number
    DLListItem<ev_binding_t> namelinks; // hash links by name
@@ -146,9 +150,17 @@ struct ev_binding_t
 // the type and never by the action. For example, W1ActionType sets 
 // EV_POSTCLEARSPECIAL for all DOOM-style W1 actions.
 //
-inline static unsigned int EV_CompositeActionFlags(ev_action_t *action)
+inline static unsigned int EV_CompositeActionFlags(const ev_action_t *action)
 {
    return (action ? (action->type->flags | action->flags) : 0);
+}
+
+//
+// Like EV_IsParamLineSpec, but directly on action
+//
+inline static bool EV_IsParamAction(const ev_action_t &action)
+{
+   return !!(EV_CompositeActionFlags(&action) & EV_PARAMLINESPEC);
 }
 
 // Action Types
@@ -179,21 +191,25 @@ ev_binding_t *EV_BindingForName(const char *name);
 ev_action_t  *EV_DOOMActionForSpecial(int special);
 ev_action_t  *EV_HereticActionForSpecial(int special);
 ev_action_t  *EV_HexenActionForSpecial(int special);
+ev_action_t  *EV_ACSActionForSpecial(int special);
 ev_action_t  *EV_ActionForSpecial(int special);
+
+// Get map-specific action number for an ACS action
+int EV_ActionForACSAction(int acsActionNum);
 
 // Lockdef ID for Special
 int EV_LockDefIDForSpecial(int special);
 
 // Lockdef ID for Linedef
-int EV_LockDefIDForLine(line_t *line);
+int EV_LockDefIDForLine(const line_t *line);
 
 // Testing
 bool EV_IsParamLineSpec(int special);
 
 // Activation
-bool EV_ActivateSpecialLineWithSpac(line_t *line, int side, Mobj *thing, int spac);
+bool EV_ActivateSpecialLineWithSpac(line_t *line, int side, Mobj *thing, polyobj_s *poly, int spac);
 bool EV_ActivateSpecialNum(int special, int *args, Mobj *thing);
-int  EV_ActivateACSSpecial(line_t *line, int special, int *args, int side, Mobj *thing);
+int  EV_ActivateACSSpecial(line_t *line, int special, int *args, int side, Mobj *thing, polyobj_s *poly);
 bool EV_ActivateAction(ev_action_t *action, int *args, Mobj *thing);
 
 //
@@ -293,7 +309,7 @@ enum
    EV_STATIC_SCROLL_LINE_DOWN_FAST,         // 419
    EV_STATIC_PORTAL_HORIZON_LINE,           // 450
    EV_STATIC_SLOPE_PARAM,                   // 455
-   EV_STATIC_PORTAL_SECTOR_PARAM,           // 456
+   EV_STATIC_PORTAL_SECTOR_PARAM_COMPAT,    // 456
    EV_STATIC_WIND_CONTROL_PARAM,            // 457
    EV_STATIC_CURRENT_CONTROL_PARAM,         // 479
    EV_STATIC_PUSHPULL_CONTROL_PARAM,        // 480
@@ -302,7 +318,10 @@ enum
    EV_STATIC_SCROLL_CEILING_PARAM,          // 483
    EV_STATIC_SCROLL_FLOOR_PARAM,            // 484
    EV_STATIC_SCROLL_WALL_PARAM,             // 485
-   EV_STATIC_PORTAL_LINE_PARAM,             // 486
+   EV_STATIC_PORTAL_LINE_PARAM_COMPAT,      // 486
+   EV_STATIC_PORTAL_LINE_PARAM_QUICK,       // 491
+   EV_STATIC_PORTAL_DEFINE,                 // 492
+   EV_STATIC_SLOPE_PARAM_TAG,               // 493
 
    EV_STATIC_MAX
 };

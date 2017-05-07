@@ -168,6 +168,17 @@ public:
 };
 
 //
+// Keep track, for sprite portal copying
+//
+struct sprojlast_t
+{
+   v3fixed_t pos;    // holds coordinates
+   uint32_t sprite;  // holds both sprite num and frame num
+   float yscale;     // if scale changes, sprojheight may also do
+   float xscale;
+};
+
+//
 // Map Object definition.
 //
 // killough 2/20/98:
@@ -216,6 +227,7 @@ public:
    // Methods
    void backupPosition();
    void copyPosition(const Mobj *other);
+   int getModifiedSpawnHealth() const;
    
    // Data members
 
@@ -225,7 +237,7 @@ public:
 
    // ioanch 20160109: sprite projection chains
    DLListItem<spriteprojnode_t> *spriteproj;
-   v3fixed_t sprojlast; // coordinates after last check. Initially "invalid"
+   sprojlast_t sprojlast; // coordinates after last check. Initially "invalid"
 
    //More drawing info: to determine current sprite.
    angle_t     angle;  // orientation
@@ -361,6 +373,7 @@ public:
    prevpos_t prevpos;   // previous position for interpolation
 
    // scripting fields
+   int special;         // special
    int args[NUMMTARGS]; // arguments
    uint16_t tid;        // thing id used by scripts
 
@@ -427,7 +440,7 @@ void  P_SpawnPuff(fixed_t x, fixed_t y, fixed_t z, angle_t dir, int updown, bool
 void  P_SpawnUnknownThings();
 Mobj *P_SpawnMapThing(mapthing_t *mt);
 bool  P_CheckMissileSpawn(Mobj *);  // killough 8/2/98
-void  P_ExplodeMissile(Mobj *);     // killough
+void  P_ExplodeMissile(Mobj *, const sector_t *topedgesec);     // killough
 
 //
 // Blood spawning
@@ -715,6 +728,9 @@ enum
    // hiding cross-portal sprite projections, so the HIDDENBYQUAKE internal flag
    // was added to keep track.
    MIF_HIDDENBYQUAKE = 0x00010000,
+
+   // A substitute for calling E_SafeThingName every tic for every Mobj
+   MIF_MUSICCHANGER = 0x00020000,
 
    // these should be cleared when a thing is being raised
    MIF_CLEARRAISED = (MIF_DIEDFALLING|MIF_SCREAMED|MIF_CRASHED|MIF_WIMPYDEATH),

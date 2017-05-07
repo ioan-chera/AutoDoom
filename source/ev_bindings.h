@@ -57,18 +57,22 @@ extern ev_binding_t HereticBindings[];
 extern ev_binding_t HexenBindings[];
 extern ev_binding_t PSXBindings[];
 extern ev_binding_t UDMFEternityBindings[];
+extern ev_binding_t ACSBindings[];
 
 extern const size_t DOOMBindingsLen;
 extern const size_t HereticBindingsLen;
 extern const size_t HexenBindingsLen;
 extern const size_t PSXBindingsLen;
 extern const size_t UDMFEternityBindingsLen;
+extern const size_t ACSBindingsLen;
 
 extern ev_lockdef_t DOOMLockDefs[];
 extern ev_lockdef_t HereticLockDefs[];
 
 extern const size_t DOOMLockDefsLen;
 extern const size_t HereticLockDefsLen;
+
+void EV_InitUDMFToExtraDataLookup();
 
 #endif
 

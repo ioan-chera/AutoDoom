@@ -1234,7 +1234,7 @@ extern int levelFragLimit;
 static void D_StartupMessage()
 {
    puts("The Eternity Engine\n"
-        "Copyright 2016 James Haley, Stephen McGranahan, et al.\n"
+        "Copyright 2017 James Haley, Stephen McGranahan, et al.\n"
         "http://www.doomworld.com/eternity\n"
         "\n"
         "This program is free software distributed under the terms of\n"
@@ -1748,7 +1748,6 @@ static void D_DoomInit()
 
       // this is the last GFS action, so free the gfs now
       G_FreeGFS(gfs);
-      haveGFS = false;
    }
 
    // haleyjd: GFS is no longer valid from here!

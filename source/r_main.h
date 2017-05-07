@@ -39,6 +39,9 @@ struct spandrawer_t;
 // POV related.
 //
 
+extern fixed_t  viewcos;
+extern fixed_t  viewsin;
+
 extern int      centerx;
 extern int      centery;
 extern fixed_t  centerxfrac;
@@ -87,7 +90,7 @@ int SlopeDiv(unsigned int num, unsigned int den);
 angle_t R_PointToAngle(fixed_t x, fixed_t y);
 angle_t R_PointToAngle2(fixed_t pviewx, fixed_t pviewy, fixed_t x, fixed_t y);
 subsector_t *R_PointInSubsector(fixed_t x, fixed_t y);
-void R_SectorColormap(sector_t *s);
+void R_SectorColormap(const sector_t *s);
 
 // ioanch 20160106: template variants
 template<typename T> 
@@ -218,7 +221,8 @@ struct cb_seg_t
    seg_t *line;
 
    portal_t  *f_portal, *c_portal;
-   pwindow_t *l_window, *f_window, *c_window;
+   pwindow_t *l_window, *f_window, *c_window, *b_window, *t_window;
+   // ioanch: added b_window for bottom edge portal
 
    // SoM: used for portals
    fixed_t  frontfloorz, frontceilz, backfloorz, backceilz;

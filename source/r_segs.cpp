@@ -154,7 +154,7 @@ void R_RenderMaskedSegRange(drawseg_t *ds, int x1, int x2)
       column.texmid = column.texmid - viewz;
    }
 
-   column.texmid += segclip.line->sidedef->rowoffset;
+   column.texmid += segclip.line->sidedef->rowoffset - ds->deltaz;
    
    // SoM 10/19/02: deep water colormap fixes
    //if (fixedcolormap)
@@ -439,7 +439,21 @@ static void R_RenderSegLoop(void)
          }
          else
          {
-            if(segclip.toptex)
+            if(segclip.t_window)
+            {
+               column.y1 = t;
+               column.y2 = (int)(segclip.high > floorclip[i] ? floorclip[i] : segclip.high);
+               if(column.y2 >= column.y1)
+               {
+                  R_WindowAdd(segclip.t_window, i, 
+                     static_cast<float>(column.y1), static_cast<float>(column.y2));
+                  ceilingclip[i] = static_cast<float>(column.y2 + 1);
+               }
+               else
+                  ceilingclip[i] = static_cast<float>(t);
+               segclip.high += segclip.highstep;
+            }
+            else if(segclip.toptex)
             {
                column.y1 = t;
                column.y2 = (int)(segclip.high > floorclip[i] ? floorclip[i] : segclip.high);
@@ -464,7 +478,21 @@ static void R_RenderSegLoop(void)
                ceilingclip[i] = (float)t;
 
 
-            if(segclip.bottomtex)
+            if(segclip.b_window)
+            {
+               column.y1 = (int)(segclip.low < ceilingclip[i] ? ceilingclip[i] : segclip.low);
+               column.y2 = b;
+               if(column.y2 >= column.y1)
+               {
+                  R_WindowAdd(segclip.b_window, i, 
+                     static_cast<float>(column.y1), static_cast<float>(column.y2));
+                  floorclip[i] = static_cast<float>(column.y1 - 1);
+               }
+               else
+                  floorclip[i] = static_cast<float>(b);
+               segclip.low += segclip.lowstep;
+            }
+            else if(segclip.bottomtex)
             {
                column.y1 = (int)(segclip.low < ceilingclip[i] ? ceilingclip[i] : segclip.low);
                column.y2 = b;
@@ -737,9 +765,9 @@ void R_StoreWallRange(const int start, const int stop)
       segclip.top += clipx1 * segclip.topstep;
       segclip.bottom += clipx1 * segclip.bottomstep;
 
-      if(segclip.toptex)
+      if(segclip.toptex || seg.t_window)
          segclip.high += clipx1 * segclip.highstep;
-      if(segclip.bottomtex)
+      if(segclip.bottomtex || seg.b_window)
          segclip.low += clipx1 * segclip.lowstep;
    }
    if(clipx2)
@@ -750,9 +778,9 @@ void R_StoreWallRange(const int start, const int stop)
       segclip.top2 -= clipx2 * segclip.topstep;
       segclip.bottom2 -= clipx2 * segclip.bottomstep;
 
-      if(segclip.toptex)
+      if(segclip.toptex || seg.t_window)
          segclip.high2 -= clipx2 * segclip.highstep;
-      if(segclip.bottomtex)
+      if(segclip.bottomtex || seg.b_window)
          segclip.low2 -= clipx2 * segclip.lowstep;
    }
 
@@ -769,9 +797,9 @@ void R_StoreWallRange(const int start, const int stop)
       segclip.topstep = (segclip.top2 - segclip.top) * pstep;
       segclip.bottomstep = (segclip.bottom2 - segclip.bottom) * pstep;
 
-      if(segclip.toptex)
+      if(segclip.toptex || seg.t_window)
          segclip.highstep = (segclip.high2 - segclip.high) * pstep;
-      if(segclip.bottomtex)
+      if(segclip.bottomtex || seg.b_window)
          segclip.lowstep = (segclip.low2 - segclip.low) * pstep;
    }
 
@@ -813,6 +841,7 @@ void R_StoreWallRange(const int start, const int stop)
    ds_p->dist2    = (ds_p->dist1 = segclip.dist) + segclip.diststep * (segclip.x2 - segclip.x1);
    ds_p->diststep = segclip.diststep;
    ds_p->colormap = scalelight;
+   ds_p->deltaz = 0; // init with 0
    
    if(segclip.clipsolid)
       R_CloseDSP();
@@ -852,6 +881,8 @@ void R_StoreWallRange(const int start, const int stop)
          xlen = segclip.x2 - segclip.x1 + 1;
 
          ds_p->maskedtexturecol = lastopening - segclip.x1;
+         if(portalrender.active)
+            ds_p->deltaz = viewz - portalrender.w->vz;
          
          mtc = lastopening;
 
@@ -909,8 +940,10 @@ void R_StoreWallRange(const int start, const int stop)
       ds_p->bsilheight = D_MAXINT;
    }
 
-   if(!segclip.clipsolid && 
-      (ds_p->silhouette & SIL_TOP || ds_p->silhouette & SIL_BOTTOM))
+   // ioanch: also check for portalrender, and detect any columns shut by the
+   // portal window, which would otherwise be ignored. Necessary for correct
+   // sprite rendering.
+   if(!segclip.clipsolid && (ds_p->silhouette || portalrender.active))
       R_DetectClosedColumns();
 
    ++ds_p;

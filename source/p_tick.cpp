@@ -25,6 +25,7 @@
 
 #include "z_zone.h"
 
+#include "acs_intr.h"
 #include "c_io.h"
 #include "c_runcmd.h"
 #include "d_dehtbl.h"
@@ -40,6 +41,7 @@
 #include "p_user.h"
 #include "p_partcl.h"
 #include "polyobj.h"
+#include "s_musinfo.h"
 #include "s_sndseq.h"
 
 int leveltime;
@@ -236,6 +238,7 @@ void Thinker::RunThinkers(void)
       else
          currentthinker->Think();
    }
+   S_MusInfoUpdate();
 }
 
 //
@@ -295,6 +298,7 @@ void P_Ticker()
    }
 
    Thinker::RunThinkers();
+   ACS_Exec();
    P_UpdateSpecials();
    P_RespawnSpecials();
    if(demo_version >= 329)

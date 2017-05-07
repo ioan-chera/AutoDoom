@@ -30,6 +30,13 @@
 // Required for: DLListItem
 #include "m_dllist.h"
 
+enum
+{
+    // Flag applied on sector_t topmap/midmap/bottommap when colormap should 
+    // render like in Boom. Remove it to get the real colormap index.
+    COLORMAP_BOOMKIND = 0x80000000, 
+};
+
 // haleyjd 08/30/02: externalized these structures
 
 typedef enum
@@ -155,6 +162,8 @@ extern int        *texturetranslation;
 void R_InitData(void);
 void R_FreeData(void);
 void R_PrecacheLevel(void);
+
+void R_InitSpriteProjSpan();
 
 // Retrieval.
 // Floor/ceiling opaque texture tiles,

@@ -213,6 +213,7 @@ static dehflags_t extlineflags[] =
    { "LOWERPORTAL",  EX_ML_LOWERPORTAL  },
    { "UPPERPORTAL",  EX_ML_UPPERPORTAL  },
    { "POLYOBJECT",   EX_ML_POLYOBJECT   },
+   { "GAZE",         EX_ML_GAZE         },
    { NULL,           0                  }
 };
 

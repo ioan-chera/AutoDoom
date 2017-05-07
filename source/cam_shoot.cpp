@@ -36,6 +36,7 @@
 #include "r_pcheck.h"
 #include "r_portal.h"
 #include "r_sky.h"
+#include "r_state.h"
 
 #define RECURSION_LIMIT 64
 
@@ -87,7 +88,10 @@ void ShootContext::lineAttack(Mobj *source, angle_t angle, fixed_t distance,
    fixed_t y2 = context.state.y + (distance >> FRACBITS) * context.sin;
 
    PTDef def;
-   def.flags = CAM_ADDLINES | CAM_ADDTHINGS;
+   if(damage != D_MININT)
+      def.flags = CAM_ADDLINES | CAM_ADDTHINGS;
+   else
+      def.flags = CAM_ADDLINES;
    def.earlyOut = PTDef::eo_no;
    def.trav = shootTraverse;
    PathTraverser traverser(def, &context);
@@ -181,7 +185,12 @@ bool ShootContext::shoot2SLine(line_t *li, int lineside, fixed_t dist,
       FixedDiv(lo.opentop - state.z, dist) >= aimslope)
    {
       if(li->special)
-         P_ShootSpecialLine(thing, li, lineside);
+      {
+         if(damage != D_MININT)
+            P_ShootSpecialLine(thing, li, lineside);
+         else
+            P_GazeSpecialLine(thing, li, lineside);
+      }
       return true;
    }
    return false;
@@ -344,7 +353,12 @@ bool ShootContext::shootTraverse(const intercept_t *in, void *data,
       }
 
       if(!hitplane && li->special)
-         P_ShootSpecialLine(context.thing, li, lineside);
+      {
+         if(context.damage != D_MININT)
+            P_ShootSpecialLine(context.thing, li, lineside);
+         else
+            P_GazeSpecialLine(context.thing, li, lineside);
+      }
 
       if(R_IsSkyFlat(li->frontsector->ceilingpic) || li->frontsector->c_portal)
       {
@@ -373,8 +387,9 @@ bool ShootContext::shootTraverse(const intercept_t *in, void *data,
       if(!hitplane && !li->backsector && R_IsSkyLikePortalWall(*li))
          return false;
 
-      P_SpawnPuff(x, y, z, P_PointToAngle(0, 0, li->dx, li->dy) - ANG90,
-         updown, true);
+      if(context.damage != D_MININT)
+         P_SpawnPuff(x, y, z, P_PointToAngle(0, 0, li->dx, li->dy) - ANG90,
+            updown, true);
 
       return false;
    }
@@ -446,10 +461,19 @@ ShootContext::ShootContext(Mobj *source, angle_t inangle, fixed_t distance,
       state = *instate;
    else
    {
-      state.x = source->x;
-      state.y = source->y;
-      state.z = source->z - source->floorclip + (source->height >> 1) +
-         8 * FRACUNIT;
+      if(damage != D_MININT)
+      {
+         state.x = source->x;
+         state.y = source->y;
+         state.z = source->z - source->floorclip + (source->height >> 1) +
+            8 * FRACUNIT;
+      }
+      else
+      {
+         state.x = viewx;
+         state.y = viewy;
+         state.z = viewz;
+      }
       state.groupid = source->groupid;
       state.prev = nullptr;
       state.origindist = 0;
@@ -468,7 +492,11 @@ void CAM_LineAttack(Mobj *source, angle_t angle, fixed_t distance,
    ShootContext::lineAttack(source, angle, distance, slope, damage, nullptr);
 }
 
-
+void CAM_GazeAttack(Mobj *source, angle_t angle, fixed_t distance,
+   fixed_t slope)
+{
+   ShootContext::lineAttack(source, angle, distance, slope, D_MININT, nullptr);
+}
 
 // EOF
 

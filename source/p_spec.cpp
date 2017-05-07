@@ -1000,6 +1000,11 @@ void P_ShootSpecialLine(Mobj *thing, line_t *line, int side)
    EV_ActivateSpecialLineWithSpac(line, side, thing, nullptr, SPAC_IMPACT);
 }
 
+void P_GazeSpecialLine(Mobj *thing, line_t *line, int side)
+{
+   EV_ActivateSpecialLineWithSpac(line, side, thing, nullptr, SPAC_GAZE);
+}
+
         // sf: changed to enable_nuke for console
 int enable_nuke = 1;  // killough 12/98: nukage disabling cheat
 

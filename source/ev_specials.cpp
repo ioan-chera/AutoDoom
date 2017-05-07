@@ -1463,6 +1463,9 @@ static bool EV_checkSpac(ev_action_t *action, ev_instance_t *instance)
       case SPAC_CROSS:
          flags = EX_ML_CROSS;
          break;
+      case SPAC_GAZE:
+         flags = EX_ML_GAZE;
+         break;
       case SPAC_USE:
          flags = EX_ML_USE;
          break;

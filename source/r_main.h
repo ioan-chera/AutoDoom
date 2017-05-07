@@ -54,6 +54,8 @@ extern int      loopcount;
 extern bool     showpsprites;
 extern bool     r_boomcolormaps;
 
+extern int fov;
+
 // haleyjd 11/21/09: enumeration for R_DoomTLStyle
 enum
 {

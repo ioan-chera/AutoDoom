@@ -27,6 +27,7 @@
 #define D_TICCMD_H__
 
 #include "doomtype.h"
+#include "tables.h"
 
 // NETCODE_FIXME: ticcmd_t lives here. It's the structure used to hold
 // all player input that can currently be transmitted across the network.
@@ -69,6 +70,8 @@ struct ticcmd_t
    byte    chatchar;
    byte    buttons;
    byte    actions;
+   angle_t eyeyaw;
+   angle_t eyepitch;
 };
 
 #if defined(_MSC_VER) || defined(__GNUC__)

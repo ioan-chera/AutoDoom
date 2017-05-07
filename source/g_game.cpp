@@ -157,6 +157,8 @@ int             mouseAccel_type = 0;
 int             mouseAccel_threshold = 10; // [CG] 01/20/12
 double          mouseAccel_value = 2.0;    // [CG] 01/20/12
 
+static double g_eyeYaw, g_eyePitch;
+
 //
 // controls (have defaults)
 //
@@ -250,6 +252,19 @@ void G_BuildTiccmd(ticcmd_t *cmd)
    memcpy(cmd, base, sizeof(*cmd));
 
    cmd->consistency = consistency[consoleplayer][maketic%BACKUPTICS];
+
+   if(g_eyePitch != NAN)
+   {
+      cmd->eyepitch = ANG180 / PI * g_eyePitch;
+      cmd->eyeyaw = ANG180 / PI * g_eyeYaw;
+      g_eyePitch = NAN;
+   }
+   else
+   {
+      // disabled values
+      cmd->eyepitch = D_MAXINT;
+      cmd->eyeyaw = D_MAXINT;
+   }
 
    if(autorun)
       speed = !(runiswalk && gameactions[ka_speed]);
@@ -820,6 +835,34 @@ bool G_Responder(event_t* ev)
       }
 
       return true;    // eat events
+
+   case ev_eyetracking:
+   {
+      double ex = ev->data2;
+      double ey = ev->data3;
+
+      if(scaledwindow.width)
+      {
+         ex -= (double)scaledwindow.x / SCREENWIDTH;
+         ex *= (double)SCREENWIDTH / scaledwindow.width;
+      }
+      if(scaledwindow.height)
+      {
+         ey -= (double)scaledwindow.y / SCREENHEIGHT;
+         ey *= (double)SCREENHEIGHT / scaledwindow.height;
+      }
+      ex = (ex - 0.5) * 2;
+      ey = (ey - 0.5) * 2;
+
+      ex *= tan(double(fov) / 2 * PI / 180);  // increase it
+      g_eyeYaw = -atan(ex);
+      ey *= (double)scaledwindow.height / scaledwindow.width *
+         tan(double(fov) / 2 * PI / 180);
+      g_eyePitch = -atan(ey);
+      return true;
+   }
+   
+
       
    case ev_joystick:
       joyaxes[axisActions[ev->data1]] = ev->data2;

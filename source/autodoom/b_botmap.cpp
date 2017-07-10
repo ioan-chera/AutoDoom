@@ -1212,13 +1212,13 @@ void BotMap::Build()
    B_Log("Looking for level cache %s...", hashFileName.constPtr());
    const char* fpath = D_CheckAutoDoomPathFile(hashFileName.constPtr(), false);
 
-   if (fpath)
-   {
-       // Try building from it
-       BotMap::loadFromCache(fpath);
-       if (botMap)
-           botMap->changeTag(PU_LEVEL);
-   }
+//   if (fpath)
+//   {
+//       // Try building from it
+//       BotMap::loadFromCache(fpath);
+//       if (botMap)
+//           botMap->changeTag(PU_LEVEL);
+//   }
 
    if (!fpath || !botMap)
    {
@@ -1240,7 +1240,7 @@ void BotMap::Build()
        B_NEW_CLOCK
        botMap->addCornerNeighs();
        B_MEASURE_CLOCK(addCornerNeighs)
-       botMap->cacheToFile(M_SafeFilePath(g_autoDoomPath, hashFileName.constPtr()));
+//       botMap->cacheToFile(M_SafeFilePath(g_autoDoomPath, hashFileName.constPtr()));
    }
    efree(digest);
 

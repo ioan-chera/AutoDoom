@@ -540,8 +540,8 @@ void TempBotMapPImpl::placeBSPLines()
    for (int i = 0; i < (int)rawBSPLines.getLength(); ++i)
    {
       const RawLine &rl = rawBSPLines[i];
-      TempBotMap::Vertex &v1 = o->placeVertex(rl.v[0].x, rl.v[0].y);
-      TempBotMap::Vertex &v2 = o->placeVertex(rl.v[1].x, rl.v[1].y);
+      v2fixed_t v1 = o->placeVertex(rl.v[0]);
+      v2fixed_t v2 = o->placeVertex(rl.v[1]);
       o->placeLine(v1, v2, rl.line);
    }
 }
@@ -556,23 +556,23 @@ void TempBotMapPImpl::placeMSecLines()
    int numms = (int)rawMSectors.getLength();
 
    IntOSet simpleSet;
-   TempBotMap::Vertex *v = NULL, *oldv = NULL, *firstv = NULL;
+   v2fixed_t v = {D_MININT}, oldv = {D_MININT}, firstv = {D_MININT};
    for(int i = 0; i < numms; ++i)
    {
-      v = oldv = firstv = NULL;
+      v.x = oldv.x = firstv.x = D_MININT;
       simpleSet.clear();
       simpleSet.insert(i);
       RawMSector &rms = rawMSectors[i];
       for (int j = 0; j < rms.nvertices; ++j)
       {
          oldv = v;
-         v = &o->placeVertex(rms.v[j].x, rms.v[j].y);
-         if(!firstv)
+         v = o->placeVertex(rms.v[j]);
+         if(firstv.x == D_MININT)
             firstv = v;
-         if(oldv)
-            o->placeLine(*oldv, *v, nullptr, &simpleSet);
+         if(oldv.x != D_MININT)
+            o->placeLine(oldv, v, nullptr, &simpleSet);
       }
-      o->placeLine(*v, *firstv, nullptr, &simpleSet);
+      o->placeLine(v, firstv, nullptr, &simpleSet);
    }
 }
 
@@ -614,8 +614,8 @@ void TempBotMapPImpl::fillMSecRefs()
             if(visitedSet.count(&ln))  // was visited, so skip
                continue;
             visitedSet.insert(&ln);
-            fixed_t x = ln.v1->x / 2 + ln.v2->x / 2;
-            fixed_t y = ln.v1->y / 2 + ln.v2->y / 2;
+            fixed_t x = ln.v1.x / 2 + ln.v2.x / 2;
+            fixed_t y = ln.v1.y / 2 + ln.v2.y / 2;
             // This metasector is not part of it
             if(!ln.msecIndices[0].count(i) && !ln.msecIndices[1].count(i))
             {
@@ -682,8 +682,6 @@ void TempBotMap::deleteLine(Line *ln, IntOSet *targfront, IntOSet *targback)
       }
    }
    
-   --ln->v1->degree;
-   --ln->v2->degree;
    lineList.remove(ln);
    if(targfront)
       *targfront = std::move(ln->msecIndices[0]);
@@ -693,21 +691,33 @@ void TempBotMap::deleteLine(Line *ln, IntOSet *targfront, IntOSet *targback)
 }
 
 //
+// Returns true if two bot-map vertices are too close together
+// Needed to prevent micro-lines
+//
+inline static bool B_tooClose(v2fixed_t v1, v2fixed_t v2)
+{
+   return D_abs(v1.x - v2.x) < FRACUNIT && D_abs(v1.y - v2.y) < FRACUNIT;
+}
+
+//
 // TempBotMap::placeLine
 //
 // Places a line, making sure it fits with what's already there
 //
-TempBotMap::Line &TempBotMap::placeLine(Vertex &v1, Vertex &v2, const line_t* assocLine,
-                                const IntOSet *msecGen, const IntOSet *bsecGen)
+TempBotMap::Line &TempBotMap::placeLine(v2fixed_t v1, v2fixed_t v2,
+                                        const line_t* assocLine,
+                                        const IntOSet *msecGen,
+                                        const IntOSet *bsecGen)
 {
+   int blockIndex1 = botMap->getBlockCoords(v1);
+
    // What can happen?
    // -- a line already exists between v1 and v2: just return that line
-   for (auto it = lineBMap[v1.blockIndex].begin();
-        it != lineBMap[v1.blockIndex].end();
-        ++it)
+   for (auto it = lineBMap[blockIndex1].begin();
+        it != lineBMap[blockIndex1].end(); ++it)
    {
       Line &ln = **it;
-      if(ln.v1 == &v1 && ln.v2 == &v2)
+      if(B_tooClose(ln.v1, v1) && B_tooClose(ln.v2, v2))
       {
          TempBotMapPImpl::LinePtrFlip lpf = TempBotMapPImpl::makeLinePtrFlip(&ln,
                                                                      false);
@@ -732,7 +742,7 @@ TempBotMap::Line &TempBotMap::placeLine(Vertex &v1, Vertex &v2, const line_t* as
              ln.assocLine = assocLine;  // move it
          return ln;  // just return that
       }
-      if(ln.v2 == &v1 && ln.v1 == &v2)
+      if(B_tooClose(ln.v2, v1) && B_tooClose(ln.v1, v2))
       {
          // reverse that, and return it
          TempBotMapPImpl::LinePtrFlip lpf = TempBotMapPImpl::makeLinePtrFlip(&ln, true);
@@ -772,31 +782,38 @@ TempBotMap::Line &TempBotMap::placeLine(Vertex &v1, Vertex &v2, const line_t* as
    {
       // scan each map block
       int b = *it;
-      for (DLListItem<Vertex> *item = vertexBMap[b].head;
-           item;
-           item = item->dllNext)
+      for (auto it = lineBMap[b].begin(); it != lineBMap[b].end(); ++it)
       {
-         Vertex &v = **item;
+         Line &ln = **it;
          // see if it isn't just one of the extremes
-         if(&v == &v1 || &v == &v2)
-            continue;
+         v2fixed_t vs[2] = {ln.v1, ln.v2};
 
-         v2fixed_t proj = B_ProjectionOnLine(v.x, v.y, v1.x, v1.y, v2.x - v1.x,
-                                             v2.y - v1.y);
-         // scan each vertex in a block
-         if(D_abs(proj.x - v.x) < FRACUNIT && D_abs(proj.y - v.y) < FRACUNIT)
+         for(int vi = 0; vi < 2; ++vi)
          {
-            // intersecting, now see if inside
-            if(FixedMul64(v.x - v1.x, v2.x - v.x) +
-               FixedMul64(v.y - v1.y, v2.y - v.y) > 0)
+            v2fixed_t v = vs[vi];
+            if(B_tooClose(v, v1) || B_tooClose(v, v2))
+               goto nextIt;
+
+            v2fixed_t proj = B_ProjectionOnLine(v.x, v.y, v1.x, v1.y,
+                                                v2.x - v1.x, v2.y - v1.y);
+            // scan each vertex in a block
+            if(D_abs(proj.x - v.x) < FRACUNIT &&
+               D_abs(proj.y - v.y) < FRACUNIT)
             {
-               // inside. Now recursively create inside until managed
-               // let's hope it doesn't crash
-               
-               placeLine(v1, v, assocLine, msecGen, bsecGen);
-               return placeLine(v, v2, assocLine, msecGen, bsecGen);
+               // intersecting, now see if inside
+               if(FixedMul64(v.x - v1.x, v2.x - v.x) +
+                  FixedMul64(v.y - v1.y, v2.y - v.y) > 0)
+               {
+                  // inside. Now recursively create inside until managed
+                  // let's hope it doesn't crash
+
+                  placeLine(v1, v, assocLine, msecGen, bsecGen);
+                  return placeLine(v, v2, assocLine, msecGen, bsecGen);
+               }
             }
          }
+      nextIt:
+         ;
       }
       
       // -- another line will intersect it, create a vertex there and split them
@@ -809,7 +826,7 @@ TempBotMap::Line &TempBotMap::placeLine(Vertex &v1, Vertex &v2, const line_t* as
       {
          Line &ln = **it;
          isInt = B_IntersectionPoint(LineEq::MakeFixed(v1, v2),
-                                          LineEq::MakeFixed(*ln.v1, *ln.v2),
+                                          LineEq::MakeFixed(ln.v1, ln.v2),
                                           ix, iy);
          // bounds checking
          if(isInt && fabs(ix) < 32767 && fabs(iy) < 32767)
@@ -827,15 +844,15 @@ TempBotMap::Line &TempBotMap::placeLine(Vertex &v1, Vertex &v2, const line_t* as
             // is it inside both these lines?
             if (FixedMul64(inters.x - v1.x, v2.x - inters.x) +
                 FixedMul64(inters.y - v1.y, v2.y - inters.y) > 0 &&
-                FixedMul64(inters.x - ln.v1->x, ln.v2->x - inters.x) +
-                FixedMul64(inters.y - ln.v1->y, ln.v2->y - inters.y) > 0)
+                FixedMul64(inters.x - ln.v1.x, ln.v2.x - inters.x) +
+                FixedMul64(inters.y - ln.v1.y, ln.v2.y - inters.y) > 0)
             {
                // it is. Now can intersect
                // Create vertex
-               Vertex &midv = placeVertex(inters.x, inters.y);
+               v2fixed_t midv = placeVertex(inters);
                // see if vertex ended up in the place of another already exis-
                // ting
-               if(&midv == &v1)
+               if(midv == v1)
                {
                   // intersecting me home.
                   // other line already split. So continue by adding normally
@@ -843,7 +860,7 @@ TempBotMap::Line &TempBotMap::placeLine(Vertex &v1, Vertex &v2, const line_t* as
 //                  return placeLine(v1, v2, bspIdx, msecGen, bsecGen);
                   continue;
                }
-               if(&midv == &v2)
+               if(midv == v2)
                {
                   // intersecting me on end.
                   // other line already split. So continue by adding normally
@@ -861,12 +878,10 @@ TempBotMap::Line &TempBotMap::placeLine(Vertex &v1, Vertex &v2, const line_t* as
    Line *ln = new Line;
    
 //   Line *ln = estructalloc(Line, 1);
-   ln->v1 = &v1;
-   ln->v2 = &v2;
+   ln->v1 = v1;
+   ln->v2 = v2;
    ln->metasec[0] = NULL;
    ln->metasec[1] = NULL;
-   ++v1.degree;
-   ++v2.degree;
    
 //   ln->blockIndices = ecalloc(int *, ln->numlinks = coll.getLength(),
 //                              sizeof(int));
@@ -913,17 +928,17 @@ TempBotMap::Line &TempBotMap::placeLine(Vertex &v1, Vertex &v2, const line_t* as
 // Adds a vertex to given coordinates, making sure to link it in blockmap.
 // If it's already in blockmap, return that one instead of creating a new one
 //
-TempBotMap::Vertex &TempBotMap::placeVertex(fixed_t x, fixed_t y)
+v2fixed_t TempBotMap::placeVertex(v2fixed_t v)
 {
-   int b = B_GetBlockCoords(x, y, botMap->bMapOrgX, botMap->bMapOrgY,
-                            botMap->bMapWidth, BOTMAPBLOCKSIZE);
+   int b = botMap->getBlockCoords(v);
    
-   for (DLListItem<Vertex> *item = vertexBMap[b].head;
-        item;
-        item = item->dllNext)
+   for(auto it = lineBMap[b].begin(); it != lineBMap[b].end(); ++it)
    {
-      if (D_abs((*item)->x - x) < FRACUNIT && D_abs((*item)->y - y) < FRACUNIT)
-         return **item;
+      const Line &ln = **it;
+      if(B_tooClose(ln.v1, v))
+         return ln.v1;
+      if(B_tooClose(ln.v2, v))
+         return ln.v2;
    }
    int8_t m, n;
    for (m = -1; m < 2; ++m)
@@ -932,22 +947,16 @@ TempBotMap::Vertex &TempBotMap::placeVertex(fixed_t x, fixed_t y)
       {
          if (!m && !n)  // don't revisit centre
             continue;
-         int c = B_GetBlockCoords(x + m * FRACUNIT, y + n * FRACUNIT,
-                                  botMap->bMapOrgX, botMap->bMapOrgY,
-                                  botMap->bMapWidth, BOTMAPBLOCKSIZE);
+         int c = botMap->getBlockCoords(v.x + m * FRACUNIT, v.y + n * FRACUNIT);
          if(c != b)
          {
-            for (DLListItem<Vertex> *item = vertexBMap[c].head;
-                 item;
-                 item = item->dllNext)
+            for (auto it = lineBMap[b].begin(); it != lineBMap[b].end(); ++it)
             {
-               if (D_abs((*item)->x - x) < FRACUNIT &&
-                   D_abs((*item)->y - y) < FRACUNIT)
-               {
-//                  printf("Found cross-block vertex merge %d %d (%d %d)\n",
-//                         m, n, x>>FRACBITS, y>>FRACBITS);
-                  return **item;
-               }
+               const Line &ln = **it;
+               if(B_tooClose(ln.v1, v))
+                  return ln.v1;
+               if(B_tooClose(ln.v2, v))
+                  return ln.v2;
             }
          }
       }
@@ -960,43 +969,28 @@ TempBotMap::Vertex &TempBotMap::placeVertex(fixed_t x, fixed_t y)
       if(*it == NULL)   // sparse (deleted)
          continue;
       Line &ln = **it;
-      v2fixed_t proj = B_ProjectionOnLine(x, y, ln.v1->x, ln.v1->y,
-                                          ln.v2->x - ln.v1->x,
-                                          ln.v2->y - ln.v1->y);
-      if(D_abs(x - proj.x) < FRACUNIT && D_abs(y - proj.y) < FRACUNIT)
+      v2fixed_t proj = B_ProjectionOnLine(v.x, v.y, ln.v1.x, ln.v1.y,
+                                          ln.v2.x - ln.v1.x, ln.v2.y - ln.v1.y);
+      if(B_tooClose(v, proj))
       {
-         if(FixedMul64(x - ln.v1->x, ln.v2->x - x) +
-            FixedMul64(y - ln.v1->y, ln.v2->y - y) > 0)
+         if(FixedMul64(v.x - ln.v1.x, ln.v2.x - v.x) +
+            FixedMul64(v.y - ln.v1.y, ln.v2.y - v.y) > 0)
          {
             // inside the segment. Split it.
-            Vertex *vert = estructalloc(Vertex, 1);
-            vert->x = x;
-            vert->y = y;
-            vert->blockIndex = b;
-            vert->degree = 0;
-            Vertex &ov1 = *ln.v1, &ov2 = *ln.v2;
+            v2fixed_t ov1 = ln.v1, ov2 = ln.v2;
             
             IntOSet front, back;
             const line_t* assocLine = ln.assocLine;
             deleteLine(&ln, &front, &back);
-            vertexList.insert(vert);
-            vertexBMap[vert->blockIndex].insert(vert);
-            
-            placeLine(ov1, *vert, assocLine, &front, &back);
-            placeLine(*vert, ov2, assocLine, &front, &back);
-            return *vert;
+
+            placeLine(ov1, v, assocLine, &front, &back);
+            placeLine(v, ov2, assocLine, &front, &back);
+            return v;
          }
       }
    }
-   Vertex *vert = estructalloc(Vertex, 1);
-   vert->x = x;
-   vert->y = y;
-   vert->blockIndex = b;
-   vert->degree = 0;
-   vertexList.insert(vert);
-   vertexBMap[b].insert(vert);
-   
-   return *vert;
+
+   return v;
 }
 
 //
@@ -1008,9 +1002,6 @@ void TempBotMap::createBlockMap()
 {
    int bsz = botMap->bMapWidth * botMap->bMapHeight;
    
-   typedef DLList<Vertex, &Vertex::blockLink> VertexList;
-   
-   vertexBMap = estructalloc(VertexList, bsz);
    for(int i = 0; i < bsz; ++i)
    {
       lineBMap.add();
@@ -1375,7 +1366,7 @@ void TempBotMap::obtainMetaSectors()
       }
    }
    
-   DLListItem<Line> *item; // iteration item
+   DLListItemNC<Line> *item; // iteration item
    byte i;                 // various iteration indices
    int j;
    
@@ -1393,11 +1384,11 @@ void TempBotMap::obtainMetaSectors()
          if (!ln.msecIndices[i].size())   // No raw msec on this side of line
          {
             // just sector
-            const v2fixed_t mid = {ln.v1->x / 2 + ln.v2->x / 2,
-               ln.v1->y / 2 + ln.v2->y / 2};
+            const v2fixed_t mid = {ln.v1.x / 2 + ln.v2.x / 2,
+               ln.v1.y / 2 + ln.v2.y / 2};
             
-            const angle_t ang = P_PointToAngle(ln.v1->x, ln.v1->y,
-                                               ln.v2->x, ln.v2->y) +
+            const angle_t ang = P_PointToAngle(ln.v1.x, ln.v1.y,
+                                               ln.v2.x, ln.v2.y) +
             (i ? ANG90 : -ANG90);
             
             const sector_t *sector;
@@ -1536,7 +1527,7 @@ void TempBotMap::obtainMetaSectors()
 //
 void TempBotMap::clearRedundantLines()
 {
-   DLListItem<Line> *item, *next;
+   DLListItemNC<Line> *item, *next;
    for (item = lineList.head; item; item = next)
    {
       next = item->dllNext;
@@ -1553,17 +1544,19 @@ void TempBotMap::clearRedundantLines()
 //
 void TempBotMap::clearUnusedVertices()
 {
-   DLListItem<Vertex> *item, *next;
-   for (item = vertexList.head; item; item = next)
+   for(DLListItemNC<Line> *item = lineList.head; item; item = item->dllNext)
    {
-      next = item->dllNext;
-      if(!item->dllObject->degree)
-      {
-         vertexList.remove(*item);
-         vertexBMap[item->dllObject->blockIndex].remove(*item);
-         efree(*item);
-      }
+      const Line &ln = *item->dllObject;
+      auto it = vertexMap.find(ln.v1);
+      if(it == vertexMap.cend())
+         vertexMap[ln.v1] = static_cast<int>(vertexMap.size());
+      it = vertexMap.find(ln.v2);
+      if(it == vertexMap.cend())
+         vertexMap[ln.v2] = static_cast<int>(vertexMap.size());
    }
+   vertexList.resize(vertexMap.size());
+   for(const auto &pair : vertexMap)
+      vertexList[pair.second] = pair.first;
 }
 
 //
@@ -1571,9 +1564,8 @@ void TempBotMap::clearUnusedVertices()
 //
 // Constructor
 //
-TempBotMap::TempBotMap() : generated(false), radius(0), vertexBMap(NULL)
+TempBotMap::TempBotMap() : generated(false), radius(0)
 {
-   vertexList.head = nullptr;
    lineList.head = nullptr;
    msecList.head = nullptr;
 
@@ -1591,15 +1583,7 @@ TempBotMap::TempBotMap() : generated(false), radius(0), vertexBMap(NULL)
 TempBotMap::~TempBotMap()
 {
    {
-      DLListItem<Vertex> *item, *next;
-      for (item = vertexList.head; item != nullptr; item = next)
-      {
-         next = item->dllNext;
-         efree(item->dllObject);
-      }
-   }
-   {
-      DLListItem<Line> *item, *next;
+      DLListItemNC<Line> *item, *next;
       for (item = lineList.head; item != nullptr; item = next)
       {
          next = item->dllNext;
@@ -1614,7 +1598,6 @@ TempBotMap::~TempBotMap()
          delete item->dllObject;
       }
    }
-   efree(vertexBMap);
    
    delete pimpl;
 }
@@ -1654,6 +1637,15 @@ void TempBotMap::generateForRadius(fixed_t inradius)
    pimpl->placeBSPLines();
    B_MEASURE_CLOCK(placeBSPLines)
    
+   {
+      int cntl = 0, cntv = 0;
+      for(const auto *line = lineList.head; line; line = line->dllNext)
+      {
+         ++cntl;
+      }
+      B_Log("%d lines, %d vertices", cntl, cntv);
+   }
+
    B_NEW_CLOCK
    pimpl->placeMSecLines();
    B_MEASURE_CLOCK(placeMSecLines)

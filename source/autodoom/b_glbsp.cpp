@@ -41,13 +41,13 @@
 #include "glbsp/glbsp.h"
 #include "../v_misc.h"
 
-static const DLListItem<TempBotMap::Vertex> *vertListHead;
+//static const DLListItem<TempBotMap::Vertex> *vertListHead;
 static const DLListItem<MetaSector> *msecListHead;
 static const DLListItem<MetaSector> *msecListHead2;
-static const DLListItem<TempBotMap::Line> *lineListHead;
+static const DLListItemNC<TempBotMap::Line> *lineListHead;
 static int vertIndex;
 static int msecIndex;
-static PODCollection<TempBotMap::Vertex *> vertRefColl;
+//static PODCollection<TempBotMap::Vertex *> vertRefColl;
 static PODCollection<MetaSector *> msecRefColl;
 
 //
@@ -57,13 +57,13 @@ static PODCollection<MetaSector *> msecRefColl;
 //
 static void B_GLBSP_setupReferences()
 {
-   vertListHead = tempBotMap->vertGet();
+//   vertListHead = tempBotMap->vertGet();
    msecListHead = tempBotMap->msecGet();
    msecListHead2 = tempBotMap->msecGet();
    lineListHead = tempBotMap->lineGet();
    vertIndex = 0;
    msecIndex = 0;
-   vertRefColl.clear();
+//   vertRefColl.clear();
    msecRefColl.clear();
 }
 
@@ -137,7 +137,7 @@ void B_GLBSP_Start()
    // Free memory
    GlbspFree(info.input_file);
    msecRefColl.clear();
-   vertRefColl.clear();
+//   vertRefColl.clear();
 }
 
 //
@@ -148,18 +148,11 @@ void B_GLBSP_Start()
 //
 int B_GLBSP_GetNextVertex(double *coordx, double *coordy)
 {
-   if (!vertListHead)
+   if(vertIndex == tempBotMap->vertexList.getLength())
       return 0;
-   *coordx = M_FixedToDouble(vertListHead->dllObject->x);
-   *coordy = M_FixedToDouble(vertListHead->dllObject->y);
-   
-   // Add reference to collection
-   vertRefColl.add(vertListHead->dllObject);
-   
-   // set the index for future use
-   tempBotMap->setItemIndex(vertIndex++, vertListHead->dllObject);
-   
-   vertListHead = vertListHead->dllNext;
+   *coordx = M_FixedToDouble(tempBotMap->vertexList[vertIndex].x);
+   *coordy = M_FixedToDouble(tempBotMap->vertexList[vertIndex].y);
+   ++vertIndex;
    return 1;
 }
 
@@ -218,9 +211,9 @@ int B_GLBSP_GetNextLinedef(int *startIdx, int *endIdx, int *rightIdx,
 {
    if(!lineListHead)
       return 0;
-   
-   *startIdx = lineListHead->dllObject->v1->listLink.dllData;
-   *endIdx = lineListHead->dllObject->v2->listLink.dllData;
+
+   *startIdx = tempBotMap->vertexMap[lineListHead->dllObject->v1];
+   *endIdx = tempBotMap->vertexMap[lineListHead->dllObject->v2];
    
    const MetaSector *msec = lineListHead->dllObject->metasec[0];
    if (msec == botMap->nullMSec)

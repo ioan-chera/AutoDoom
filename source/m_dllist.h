@@ -82,6 +82,49 @@ public:
 };
 
 //
+// Variant without dllData.
+//
+template<typename T> class DLListItemNC
+{
+public:
+   DLListItemNC<T>  *dllNext;
+   DLListItemNC<T> **dllPrev;
+   T              *dllObject; // 08/02/09: pointer back to object
+
+   inline void insert(T *parentObject, DLListItemNC<T> **head)
+   {
+      DLListItemNC<T> *next = *head;
+
+      if((dllNext = next))
+         next->dllPrev = &dllNext;
+      dllPrev = head;
+      *head = this;
+
+      dllObject = parentObject; // set to object, which is generally distinct
+   }
+
+   inline void remove()
+   {
+      DLListItemNC<T> **prev = dllPrev;
+      DLListItemNC<T>  *next = dllNext;
+
+      // haleyjd 05/07/13: safety #1: only if prev is non-null
+      if(prev && (*prev = next))
+         next->dllPrev = prev;
+
+      // haleyjd 05/07/13: safety #2: clear links.
+      dllPrev = nullptr;
+      dllNext = nullptr;
+   }
+
+   // DEPRECATED
+   inline    operator T * () const { return dllObject; }
+
+   // DEPRECATED
+   inline T *operator ->  () const { return dllObject; }
+};
+
+//
 // Reverse the order of a list made of DLListItem instances.
 //
 template<typename T>
@@ -122,6 +165,22 @@ public:
 
    inline void reverse() { DLList_Reverse<>(&head); }
 };
+
+//
+// Variant with no cache
+//
+template<typename T, DLListItemNC<T> T::* link> class DLListNC
+{
+public:
+   DLListItemNC<T> *head;
+   inline void insert(T *object) { (object->*link).insert(object, &head); }
+   inline void remove(T *object) { (object->*link).remove();              }
+   inline void insert(T &object) { insert(&object);                       }
+   inline void remove(T &object) { remove(&object);                       }
+
+//   inline void reverse() { DLList_Reverse<>(&head); }
+};
+
 
 #endif
 

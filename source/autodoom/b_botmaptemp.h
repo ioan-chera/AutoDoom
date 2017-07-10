@@ -30,6 +30,7 @@
 #define B_BOTMAPTEMP_H_
 
 #include <unordered_set>
+#include <map>
 #include <set>
 
 #include "b_intset.h"
@@ -60,15 +61,15 @@ public:
    //
    // A vertex of the map
    //
-   struct Vertex
-   {
-      DLListItem<Vertex> listLink;  // link within global list
-      DLListItem<Vertex> blockLink; // link within map block
-      fixed_t x, y;                 // coordinates
-      int blockIndex;
-      int degree;                      // graph degree
-   };
-   
+//   struct Vertex
+//   {
+//      DLListItem<Vertex> listLink;  // link within global list
+//      DLListItemNC<Vertex> blockLink; // link within map block
+//      fixed_t x, y;                 // coordinates
+//      int blockIndex;
+//      int degree;                      // graph degree
+//   };
+
    //
    // Line
    //
@@ -77,8 +78,9 @@ public:
    class Line : public ZoneObject
    {
    public:
-      DLListItem<Line> listLink;
-      Vertex *v1, *v2;        // end points
+      DLListItemNC<Line> listLink;
+//      Vertex *v1, *v2;        // end points
+      v2fixed_t v1, v2;          // coordinates
       PODCollection<int> blockIndices; // blockmap links
       IntOSet msecIndices[2];  // metasector links
       MetaSector *metasec[2];
@@ -94,21 +96,22 @@ private:
    bool generated;   // initialization flag
    fixed_t radius;   // reduction radius
    
-   DLList<Vertex, &Vertex::listLink> vertexList;
-   DLList<Vertex, &Vertex::blockLink> *vertexBMap;
-   DLList<Line, &Line::listLink> lineList;
+//   DLList<Vertex, &Vertex::listLink> vertexList;
+//   DLListNC<Vertex, &Vertex::blockLink> *vertexBMap;
+   DLListNC<Line, &Line::listLink> lineList;
    Collection<LinePtrSet > lineBMap;
    DLList<MetaSector, &MetaSector::listLink> msecList;
    
+
    //
    // PRIVATE METHODS
    //
    
    void createBlockMap();
    
-   void deleteVertex(Vertex *vert);
+//   void deleteVertex(Vertex *vert);
    void deleteLine(Line *ln, IntOSet *targfront, IntOSet *targback);
-   Line &placeLine(Vertex &v1, Vertex &v2, const line_t* assocLine = nullptr,
+   Line &placeLine(v2fixed_t v1, v2fixed_t v2, const line_t* assocLine = nullptr,
                    const IntOSet *msecGen = nullptr,
                    const IntOSet *bsecGen = nullptr);
    
@@ -123,13 +126,24 @@ public:
 		return msecList;
 	}
 	
-   Vertex &placeVertex(fixed_t x, fixed_t y);
-   
+   v2fixed_t placeVertex(v2fixed_t v);
+
+   struct vectless
+   {
+      bool operator()(v2fixed_t v1, v2fixed_t v2) const
+      {
+         return v1.x < v2.x ? true : v2.x < v1.x ? false : v1.y < v2.y;
+      }
+   };
+
+   std::map<v2fixed_t, int, vectless> vertexMap;
+   PODCollection<v2fixed_t> vertexList;
+
    TempBotMap();
    ~TempBotMap();
    void generateForRadius(fixed_t inradius);
-   const DLListItem<Line> *lineGet() const {return lineList.head;}
-   const DLListItem<Vertex> *vertGet() const {return vertexList.head;}
+   const DLListItemNC<Line> *lineGet() const {return lineList.head;}
+//   const DLListItem<Vertex> *vertGet() const {return vertexList.head;}
    const DLListItem<MetaSector> *msecGet() const {return msecList.head;}
    template <typename T> void setItemIndex(int dat, T *obj)
    {

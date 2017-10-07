@@ -29,7 +29,7 @@
 // HAL modules
 #include "../hal/i_platform.h"
 #include "../hal/i_gamepads.h"
-#include "../hal/i_tobii.h"
+#include "../i_tobii2.h"
 
 #include "../c_io.h"
 #include "../c_runcmd.h"
@@ -571,7 +571,7 @@ static void I_GetEvent()
 
    // Check eye tracking
    double etx, ety;
-   if(I_TobiiGetEvent(etx, ety))
+   if(I_EyeGetEvent(etx, ety))
    {
       eyeevent.data2 = etx;
       eyeevent.data3 = ety;

@@ -23,9 +23,11 @@
 //
 
 #include <tobii/tobii.h>
+#include <tobii/tobii_streams.h>
 #include "z_zone.h"
 #include "c_io.h"
 #include "d_main.h"
+#include "doomstat.h"
 #include "hal/i_platform.h"
 #include "i_tobii2.h"
 #include "v_misc.h"
@@ -35,8 +37,13 @@
 #include <Windows.h>
 #endif
 
-static tobii_api_t *api;      // The Stream Engine API
-static tobii_device_t *dev;   // The loaded device
+enum
+{
+   CONN_RETRY_COOLDOWN = TICRATE,
+   TIMESYNC_SUCCESS_COOLDOWN = 30 * TICRATE,
+   TIMESYNC_FAILURE_COOLDOWN = 5 * TICRATE,
+   MONITOR_CHECK_COOLDOWN = TICRATE
+};
 
 #if EE_CURRENT_PLATFORM == EE_PLATFORM_WINDOWS
 //
@@ -49,7 +56,24 @@ struct handledata_t
 };
 
 static HWND g_mainWindow;  // the main window (used for getting coordinates)
+static HMONITOR g_mainMonitor;   // the main window's monitor
 #endif
+
+//
+// The eyetracking event, observed by the game
+//
+static struct
+{
+   double x;
+   double y;
+   bool fired;
+} g_event;
+
+static tobii_api_t *api;      // The Stream Engine API
+static tobii_device_t *dev;   // The loaded device
+static int retryCooldown;     // Time when to retry device
+static int timesyncCooldown;  // Time between time syncs
+static int monitorCooldown;   // monitor check cooldown
 
 //
 // Allocator callback
@@ -95,7 +119,6 @@ static void I_log(void *log_context, tobii_log_level_t level, char const *text)
    default:
       break;
    }
-#endif
 
    // Keep them only to debug because they're really dense.
 #ifdef _DEBUG
@@ -104,6 +127,7 @@ static void I_log(void *log_context, tobii_log_level_t level, char const *text)
       level == TOBII_LOG_LEVEL_INFO ? 'I' : 
       level == TOBII_LOG_LEVEL_DEBUG ? 'D' : 'T';
    printf("Stream(%c): %s\n", c, text);
+#endif
 #endif
 }
 
@@ -132,6 +156,35 @@ static BOOL CALLBACK I_enumWindowsCallback(HWND handle, LPARAM lParam)
 }
 
 //
+// Gaze callback
+//
+static void I_gazePointCallback(const tobii_gaze_point_t *gaze_point, void *user_data)
+{
+   if(gaze_point->validity != TOBII_VALIDITY_VALID)
+      return;
+   g_event.x = gaze_point->position_xy[0];
+   g_event.y = gaze_point->position_xy[1];
+   g_event.fired = true;
+}
+
+//
+// Tries to find a device if none available
+//
+static bool I_findDevice(tobii_error_t *outErr = nullptr)
+{
+   if(dev)
+      return false;  // already in
+   tobii_error_t err = tobii_device_create(api, nullptr, &dev);
+   if(err != TOBII_ERROR_NO_ERROR)
+   {
+      if(outErr)
+         *outErr = err;
+      return false;
+   }
+   return true;
+}
+
+//
 // Initializes Stream Engine
 //
 bool I_EyeInit()
@@ -145,9 +198,9 @@ bool I_EyeInit()
       ver.revision, ver.build);
 
    static const tobii_custom_alloc_t allocator = { nullptr, I_alloc, I_free };
-   static const tobii_custom_log_t logger = { nullptr, I_log };
+//   static const tobii_custom_log_t logger = { nullptr, I_log };
 
-   tobii_error_t err = tobii_api_create(&api, &allocator, &logger);
+   tobii_error_t err = tobii_api_create(&api, &allocator, nullptr);
    if(err != TOBII_ERROR_NO_ERROR)
    {
       usermsg("I_EyeInit: Failed initializing Stream Engine. %s", 
@@ -155,15 +208,15 @@ bool I_EyeInit()
       return false;
    }
 
-   // TODO: add hotplugging support.
-   err = tobii_device_create(api, nullptr, &dev);
-   if(err != TOBII_ERROR_NO_ERROR)
+   if(!I_findDevice(&err))
    {
-      usermsg("I_EyeInit: Failed loading device. %s", tobii_error_message(err));
-      I_EyeShutdown();
-      return false;
+      usermsg("I_EyeInit: Device not found. %s Will attempt again during gameplay.",
+         tobii_error_message(err));
    }
 
+   retryCooldown = gametic + CONN_RETRY_COOLDOWN;
+   timesyncCooldown = gametic + TIMESYNC_SUCCESS_COOLDOWN;
+   
    startupmsg("I_EyeInit", "Loaded Stream Engine.");
    
    return true;
@@ -192,10 +245,82 @@ void I_EyeAttachToWindow()
 }
 
 //
+// Gets event data
+//
+bool I_EyeGetEvent(double &x, double &y)
+{
+   if(!dev)
+   {
+      if(gametic >= retryCooldown && !I_findDevice())
+         retryCooldown = gametic + TICRATE;
+      return false;
+   }
+
+   tobii_gaze_point_subscribe(dev, I_gazePointCallback, nullptr); // make sure it's on
+   tobii_error_t err;
+   if(gametic >= timesyncCooldown)
+   {
+      err = tobii_update_timesync(dev);
+      if(err == TOBII_ERROR_OPERATION_FAILED)
+         timesyncCooldown = gametic + TIMESYNC_FAILURE_COOLDOWN;
+      else
+         timesyncCooldown = gametic + TIMESYNC_SUCCESS_COOLDOWN;
+   }
+   if(tobii_process_callbacks(dev) == TOBII_ERROR_CONNECTION_FAILED && 
+      tobii_reconnect(dev) == TOBII_ERROR_CONNECTION_FAILED)
+   {
+      tobii_device_destroy(dev);
+      dev = nullptr;
+      retryCooldown = gametic + TICRATE;
+      return false;  // try later
+   }
+   if(!g_event.fired)
+      return false;
+   g_event.fired = false;
+
+#if EE_CURRENT_PLATFORM == EE_PLATFORM_WINDOWS
+   RECT rect;
+   if(!g_mainWindow || !GetWindowRect(g_mainWindow, &rect))
+      return false;
+   if(rect.right == rect.left || rect.bottom == rect.top)
+      return false;
+   
+   //   printf("%g %g\n", gaze_point->position_xy[0], gaze_point->position_xy[1]);
+
+   static int screenw, screenh;
+   if(gametic >= monitorCooldown || !screenw || !screenh)
+   {
+      static HMONITOR monitor;
+      monitorCooldown = gametic + MONITOR_CHECK_COOLDOWN;
+      monitor = MonitorFromWindow(g_mainWindow, MONITOR_DEFAULTTONEAREST);
+      if(!monitor)
+         return false;
+      MONITORINFO info = { sizeof(info) };
+      if(!GetMonitorInfo(monitor, &info))
+         return false;
+      screenw = info.rcMonitor.right - info.rcMonitor.left;
+      screenh = info.rcMonitor.bottom - info.rcMonitor.top;
+      if(!screenw || !screenh)
+         return false;
+   }
+   g_event.x *= screenw;
+   g_event.y *= screenh;
+
+   x = (g_event.x - rect.left) / (rect.right - rect.left);
+   y = (g_event.y - rect.top) / (rect.bottom - rect.top);
+
+   return true;
+#endif
+
+   return false;
+}
+
+//
 // Clears stream engine
 //
 void I_EyeShutdown()
 {
+   tobii_gaze_point_unsubscribe(dev);
    tobii_device_destroy(dev);
    dev = nullptr;
    tobii_api_destroy(api);

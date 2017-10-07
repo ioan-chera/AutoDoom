@@ -27,6 +27,7 @@
 
 bool I_EyeInit();
 void I_EyeAttachToWindow();
+bool I_EyeGetEvent(double &x, double &y);
 void I_EyeShutdown();
 
 #endif

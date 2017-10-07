@@ -26,6 +26,7 @@
 #define I_TOBII2_H_
 
 bool I_EyeInit();
+void I_EyeAttachToWindow();
 void I_EyeShutdown();
 
 #endif

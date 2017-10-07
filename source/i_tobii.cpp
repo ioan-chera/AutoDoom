@@ -69,6 +69,15 @@ static struct
    bool fired;
 } g_event;
 
+//
+// If present
+//
+static struct
+{
+   bool yes;   // present?
+   bool fired; // event is fired and valid
+} g_presence;
+
 static tobii_api_t *api;      // The Stream Engine API
 static tobii_device_t *dev;   // The loaded device
 static int retryCooldown;     // Time when to retry device
@@ -168,6 +177,18 @@ static void I_gazePointCallback(const tobii_gaze_point_t *gaze_point, void *user
 }
 
 //
+// Presence detection
+//
+static void I_userPresenceCallback(const tobii_user_presence_status_t status, 
+   int64_t timestamp_us, void *user_data)
+{
+   if(status == TOBII_USER_PRESENCE_STATUS_UNKNOWN)
+      return;
+   g_presence.yes = status == TOBII_USER_PRESENCE_STATUS_PRESENT;
+   g_presence.fired = true;
+}
+
+//
 // Tries to find a device if none available
 //
 static bool I_findDevice(tobii_error_t *outErr = nullptr)
@@ -245,35 +266,10 @@ void I_EyeAttachToWindow()
 }
 
 //
-// Gets event data
+// Check the gaze event
 //
-bool I_EyeGetEvent(double &x, double &y)
+static bool I_checkGazeEvent(double &x, double &y)
 {
-   if(!dev)
-   {
-      if(gametic >= retryCooldown && !I_findDevice())
-         retryCooldown = gametic + TICRATE;
-      return false;
-   }
-
-   tobii_gaze_point_subscribe(dev, I_gazePointCallback, nullptr); // make sure it's on
-   tobii_error_t err;
-   if(gametic >= timesyncCooldown)
-   {
-      err = tobii_update_timesync(dev);
-      if(err == TOBII_ERROR_OPERATION_FAILED)
-         timesyncCooldown = gametic + TIMESYNC_FAILURE_COOLDOWN;
-      else
-         timesyncCooldown = gametic + TIMESYNC_SUCCESS_COOLDOWN;
-   }
-   if(tobii_process_callbacks(dev) == TOBII_ERROR_CONNECTION_FAILED && 
-      tobii_reconnect(dev) == TOBII_ERROR_CONNECTION_FAILED)
-   {
-      tobii_device_destroy(dev);
-      dev = nullptr;
-      retryCooldown = gametic + TICRATE;
-      return false;  // try later
-   }
    if(!g_event.fired)
       return false;
    g_event.fired = false;
@@ -316,10 +312,60 @@ bool I_EyeGetEvent(double &x, double &y)
 }
 
 //
+// Check presence
+//
+static bool I_checkPresenceEvent(bool &presence)
+{
+   presence = g_presence.yes;
+   return g_presence.fired;
+}
+
+//
+// Gets event data
+//
+void I_EyeGetEvent(double &x, double &y, bool &presence, unsigned &eventGot)
+{
+   eventGot = 0;
+   if(!dev)
+   {
+      if(gametic >= retryCooldown && !I_findDevice())
+         retryCooldown = gametic + TICRATE;
+      return;
+   }
+
+   tobii_gaze_point_subscribe(dev, I_gazePointCallback, nullptr); // make sure it's on
+   tobii_user_presence_subscribe(dev, I_userPresenceCallback, nullptr);
+
+   tobii_error_t err;
+   if(gametic >= timesyncCooldown)
+   {
+      err = tobii_update_timesync(dev);
+      if(err == TOBII_ERROR_OPERATION_FAILED)
+         timesyncCooldown = gametic + TIMESYNC_FAILURE_COOLDOWN;
+      else
+         timesyncCooldown = gametic + TIMESYNC_SUCCESS_COOLDOWN;
+   }
+   if(tobii_process_callbacks(dev) == TOBII_ERROR_CONNECTION_FAILED && 
+      tobii_reconnect(dev) == TOBII_ERROR_CONNECTION_FAILED)
+   {
+      tobii_device_destroy(dev);
+      dev = nullptr;
+      retryCooldown = gametic + TICRATE;
+      return;  // try later
+   }
+
+   if(I_checkGazeEvent(x, y))
+      eventGot |= EYE_EVENT_GAZE;
+   if(I_checkPresenceEvent(presence))
+      eventGot |= EYE_EVENT_PRESENCE;
+}
+
+//
 // Clears stream engine
 //
 void I_EyeShutdown()
 {
+   tobii_user_presence_unsubscribe(dev);
    tobii_gaze_point_unsubscribe(dev);
    tobii_device_destroy(dev);
    dev = nullptr;

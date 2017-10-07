@@ -25,9 +25,15 @@
 #ifndef I_TOBII2_H_
 #define I_TOBII2_H_
 
+enum
+{
+   EYE_EVENT_GAZE =     1,
+   EYE_EVENT_PRESENCE = 2
+};
+
 bool I_EyeInit();
 void I_EyeAttachToWindow();
-bool I_EyeGetEvent(double &x, double &y);
+void I_EyeGetEvent(double &x, double &y, bool &presence, unsigned &eventGot);
 void I_EyeShutdown();
 
 #endif

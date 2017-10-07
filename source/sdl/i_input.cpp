@@ -571,12 +571,23 @@ static void I_GetEvent()
 
    // Check eye tracking
    double etx, ety;
-   if(I_EyeGetEvent(etx, ety))
+   bool present;
+   unsigned gotEyeEvents;
+   I_EyeGetEvent(etx, ety, present, gotEyeEvents);
+   if(gotEyeEvents & EYE_EVENT_GAZE)
    {
+      eyeevent.data1 |= EV_EYE_GAZE;
       eyeevent.data2 = etx;
       eyeevent.data3 = ety;
-      D_PostEvent(&eyeevent);
    }
+   if(gotEyeEvents & EYE_EVENT_PRESENCE)
+   {
+      eyeevent.data1 |= EV_EYE_PRESENCE;
+      if(present)
+         eyeevent.data1 |= EV_EYE_PRESENCE_YES;
+   }
+   if(gotEyeEvents)
+      D_PostEvent(&eyeevent);
 
    while(SDL_PollEvent(&ev))
    {

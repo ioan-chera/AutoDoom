@@ -850,7 +850,7 @@ bool AM_Responder(event_t *ev)
          }
       }
 
-      if(ev->type == ev_eyetracking && !followplayer)
+      if(ev->type == ev_eyetracking && ev->data1 & EV_EYE_GAZE && !followplayer)
       {
          double x = ev->data2;
          double y = ev->data3;

@@ -41,6 +41,13 @@ typedef enum
   ev_eyetracking
 } evtype_t;
 
+enum
+{
+   EV_EYE_PRESENCE =       1,
+   EV_EYE_PRESENCE_YES =   2,
+   EV_EYE_GAZE =           4,
+};
+
 // Event structure.
 struct event_t
 {

@@ -158,6 +158,7 @@ int             mouseAccel_threshold = 10; // [CG] 01/20/12
 double          mouseAccel_value = 2.0;    // [CG] 01/20/12
 
 static double g_eyeYaw = NAN, g_eyePitch = NAN;
+bool g_eyePresent = true;
 
 //
 // controls (have defaults)
@@ -839,28 +840,38 @@ bool G_Responder(event_t* ev)
 
    case ev_eyetracking:
    {
-      double ex = ev->data2;
-      double ey = ev->data3;
-
-      if(scaledwindow.width)
+      bool gotOne = false;
+      if(ev->data1 & EV_EYE_GAZE)
       {
-         ex -= (double)scaledwindow.x / SCREENWIDTH;
-         ex *= (double)SCREENWIDTH / scaledwindow.width;
-      }
-      if(scaledwindow.height)
-      {
-         ey -= (double)scaledwindow.y / SCREENHEIGHT;
-         ey *= (double)SCREENHEIGHT / scaledwindow.height;
-      }
-      ex = (ex - 0.5) * 2;
-      ey = (ey - 0.5) * 2;
+         double ex = ev->data2;
+         double ey = ev->data3;
 
-      ex *= tan(double(fov) / 2 * PI / 180);  // increase it
-      g_eyeYaw = -atan(ex);
-      ey *= (double)scaledwindow.height / scaledwindow.width *
-         tan(double(fov) / 2 * PI / 180);
-      g_eyePitch = -atan(ey);
-      return true;
+         if(scaledwindow.width)
+         {
+            ex -= (double)scaledwindow.x / SCREENWIDTH;
+            ex *= (double)SCREENWIDTH / scaledwindow.width;
+         }
+         if(scaledwindow.height)
+         {
+            ey -= (double)scaledwindow.y / SCREENHEIGHT;
+            ey *= (double)SCREENHEIGHT / scaledwindow.height;
+         }
+         ex = (ex - 0.5) * 2;
+         ey = (ey - 0.5) * 2;
+
+         ex *= tan(double(fov) / 2 * PI / 180);  // increase it
+         g_eyeYaw = -atan(ex);
+         ey *= (double)scaledwindow.height / scaledwindow.width *
+            tan(double(fov) / 2 * PI / 180);
+         g_eyePitch = -atan(ey);
+         gotOne = true;
+      }
+      if(ev->data1 & EV_EYE_PRESENCE)
+      {
+         g_eyePresent = !!(ev->data1 & EV_EYE_PRESENCE_YES);
+         gotOne = true;
+      }
+      return gotOne;
    }
    
 

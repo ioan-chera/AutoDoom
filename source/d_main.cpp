@@ -63,6 +63,7 @@
 #include "hu_stuff.h"
 #include "i_sound.h"
 #include "i_system.h"
+#include "i_tobii2.h"
 #include "i_video.h"
 #include "in_lude.h"
 #include "m_argv.h"
@@ -1249,6 +1250,8 @@ static void D_StartupMessage()
 //
 static void D_startEyeTracker()
 {
+   if(I_EyeInit())
+      atexit(I_EyeShutdown);
    // Try to start eye tracker
    i_tobiiAvail tobiiAvail = I_TobiiIsAvailable();
    switch(tobiiAvail)

@@ -238,6 +238,9 @@
     <Filter Include="Tobii">
       <UniqueIdentifier>{72826839-60c7-4251-bf51-9383db473296}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\I_">
+      <UniqueIdentifier>{ff0bb973-cedd-4fb5-ad3e-294b53012fe2}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\source\acs_func.cpp">
@@ -983,6 +986,9 @@
     </ClCompile>
     <ClCompile Include="..\source\e_switch.cpp">
       <Filter>Source Files\E_\E_ Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\i_tobii2.cpp">
+      <Filter>Source Files\I_</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -1747,6 +1753,9 @@
     </ClInclude>
     <ClInclude Include="..\source\e_switch.h">
       <Filter>Source Files\E_\E_ Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\i_tobii2.h">
+      <Filter>Source Files\I_</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

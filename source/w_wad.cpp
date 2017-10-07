@@ -936,7 +936,8 @@ bool WadDirectory::addDirectoryAsArchive(openwad_t &openData,
       std::sort(paths.begin(), paths.end());
 
       // we now have the files neatly ordered
-      lumpinfo_t *lump_p = reAllocLumpInfo(paths.getLength(), startlump);
+      lumpinfo_t *lump_p = reAllocLumpInfo(static_cast<int>(paths.getLength()),
+                                           startlump);
 
       for(int i = startlump; i < numlumps; i++, lump_p++)
       {
@@ -1192,18 +1193,19 @@ void WadDirectory::coalesceMarkedResources()
 //
 unsigned int WadDirectory::LumpNameHash(const char *s)
 {
-  using namespace ectype;
-  unsigned int hash;
-  (void) ((hash =        toUpper(s[0]), s[1]) &&
-          (hash = hash*3+toUpper(s[1]), s[2]) &&
-          (hash = hash*2+toUpper(s[2]), s[3]) &&
-          (hash = hash*2+toUpper(s[3]), s[4]) &&
-          (hash = hash*2+toUpper(s[4]), s[5]) &&
-          (hash = hash*2+toUpper(s[5]), s[6]) &&
-          (hash = hash*2+toUpper(s[6]),
-           hash = hash*2+toUpper(s[7]))
-         );
-  return hash;
+   using namespace ectype;
+   unsigned int hash;
+
+   (void) ((void(hash =        toUpper(s[0])), s[1]) &&
+           (void(hash = hash*3+toUpper(s[1])), s[2]) &&
+           (void(hash = hash*2+toUpper(s[2])), s[3]) &&
+           (void(hash = hash*2+toUpper(s[3])), s[4]) &&
+           (void(hash = hash*2+toUpper(s[4])), s[5]) &&
+           (void(hash = hash*2+toUpper(s[5])), s[6]) &&
+           (void(hash = hash*2+toUpper(s[6])),
+            hash = hash*2+toUpper(s[7]))
+           );
+   return hash;
 }
 
 //
@@ -1564,7 +1566,7 @@ int WadDirectory::lumpLength(int lump)
 {
    if(lump < 0 || lump >= numlumps)
       I_Error("WadDirectory::LumpLength: %i >= numlumps\n", lump);
-   return lumpinfo[lump]->size;
+   return static_cast<int>(lumpinfo[lump]->size);
 }
 
 int W_LumpLength(int lump)

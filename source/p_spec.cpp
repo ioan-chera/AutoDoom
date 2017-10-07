@@ -44,6 +44,7 @@
 #include "d_gi.h"
 #include "d_mod.h"
 #include "doomstat.h"
+#include "e_anim.h"
 #include "e_exdata.h"
 #include "e_states.h"
 #include "e_things.h"
@@ -143,6 +144,156 @@ static void P_spawnDeferredParamPortal(line_t *line, int staticFn);
 static void P_SpawnPortal(line_t *, int);
 
 //
+// Adds a pic-anim for the given anim-def
+//
+static void P_addPicAnim(const animdef_t &animdef)
+{
+   int p;
+   int flags = TF_ANIMATED;
+
+   // 1/11/98 killough -- removed limit by array-doubling
+   if(lastanim >= anims + maxanims)
+   {
+      size_t newmax = maxanims ? maxanims*2 : MAXANIMS;
+      anims = erealloc(anim_t *, anims, newmax*sizeof(*anims)); // killough
+      lastanim = anims + maxanims;
+      maxanims = newmax;
+   }
+
+   if(animdef.istexture)
+   {
+      // different episode ?
+      if(R_CheckForWall(animdef.startname) == -1 ||
+         R_CheckForWall(animdef.endname) == -1)
+         return;
+
+      lastanim->picnum = R_FindWall(animdef.endname);
+      lastanim->basepic = R_FindWall(animdef.startname);
+   }
+   else
+   {
+      if(R_CheckForFlat(animdef.startname) == -1 ||
+         R_CheckForFlat(animdef.endname) == -1)
+         return;
+
+      lastanim->picnum = R_FindFlat(animdef.endname);
+      lastanim->basepic = R_FindFlat(animdef.startname);
+   }
+
+   lastanim->istexture = !!animdef.istexture;
+   lastanim->numpics = lastanim->picnum - lastanim->basepic + 1;
+   lastanim->speed = SwapLong(animdef.speed); // killough 5/5/98: add LONG()
+
+   if(!lastanim->speed)
+   {
+      I_Error("P_InitPicAnims: illegal speed 0 for animation %s to %s\n",
+              animdef.startname, animdef.endname);
+   }
+
+   // SoM: just to make sure
+   if(lastanim->numpics <= 0)
+      return;
+
+   // sf: include support for swirly water hack
+   if(lastanim->speed < SWIRL_TICS && lastanim->numpics != 1)
+   {
+      if(lastanim->numpics < 2)
+      {
+         I_Error("P_InitPicAnims: bad cycle from %s to %s\n",
+                 animdef.startname,
+                 animdef.endname);
+      }
+   }
+   else
+   {
+      // SoM: it's swirly water
+      flags |= TF_SWIRLY;
+   }
+
+   // SoM: add flags
+   for(p = lastanim->basepic; p <= lastanim->picnum; p++)
+      textures[p]->flags |= flags;
+
+   lastanim++;
+}
+
+//
+// Applies an EDF animation, possibly replacing one classic onoe
+//
+static void P_applyEDFAnim(const EAnimDef &ead)
+{
+   int startpic, endpic;
+   bool endgiven = false;
+   int (*checkfunc)(const char *);
+   int (*findfunc)(const char *);
+   if(ead.type == EAnimDef::type_wall)
+   {
+      if((checkfunc = R_CheckForWall)(ead.startpic.constPtr()) == -1)
+         return;
+
+      startpic = (findfunc =R_FindWall)(ead.startpic.constPtr());
+   }
+   else
+   {
+      if((checkfunc = R_CheckForFlat)(ead.startpic.constPtr()) == -1)
+         return;
+
+      startpic = (findfunc = R_FindFlat)(ead.startpic.constPtr());
+   }
+   endgiven = checkfunc(ead.endpic.constPtr()) != -1;
+   endpic = findfunc(ead.endpic.constPtr());
+   if(endgiven && endpic - startpic + 1 <= 0)
+      return;  // another invalid case
+   anim_t *anim;
+   for(anim = anims; anim != lastanim; ++anim)
+   {
+      if(anim->basepic == startpic &&
+         anim->istexture == (ead.type == EAnimDef::type_wall))
+      {
+         break;
+      }
+   }
+   if(anim == lastanim)
+   {
+      // no already-made found. Now really check the end-given
+      if(!(ead.flags & EAnimDef::SWIRL) && (!endgiven || ead.tics <= 0))
+         return;
+
+      if(lastanim >= anims + maxanims)
+      {
+         size_t newmax = maxanims ? maxanims*2 : MAXANIMS;
+         anims = erealloc(anim_t *, anims, newmax*sizeof(*anims)); // killough
+         lastanim = anims + maxanims;
+         maxanims = newmax;
+      }
+      anim = lastanim++;
+   }
+   else if(!endgiven)
+   {
+      endpic = anim->picnum;
+      if(endpic - startpic + 1 <= 0)
+         return;
+      endgiven = true;
+   }
+   anim->picnum = !endgiven ? startpic : endpic;
+   anim->basepic = startpic;
+   anim->istexture = ead.type == EAnimDef::type_wall;
+   anim->numpics = anim->picnum - anim->basepic + 1;
+   if(ead.tics > 0)
+      anim->speed = ead.tics;
+   else if(ead.flags & EAnimDef::SWIRL)
+      anim->speed = SWIRL_TICS;
+   for(int p = anim->basepic; p <= anim->picnum; p++)
+   {
+      textures[p]->flags |= TF_ANIMATED;
+      if(ead.flags & EAnimDef::SWIRL)
+         textures[p]->flags |= TF_SWIRLY;
+      else
+         textures[p]->flags &= ~TF_SWIRLY;
+   }
+}
+
+//
 // P_InitPicAnims
 //
 // Load the table of animation definitions, checking for existence of
@@ -165,80 +316,34 @@ static void P_SpawnPortal(line_t *, int);
 //
 void P_InitPicAnims(void)
 {
-   int         i, p;
    animdef_t   *animdefs; //jff 3/23/98 pointer to animation lump
-   int         flags;
    
    //  Init animation
    //jff 3/23/98 read from predefined or wad lump instead of table
    animdefs = static_cast<animdef_t *>(wGlobalDir.cacheLumpName("ANIMATED", PU_STATIC));
 
    lastanim = anims;
-   for(i = 0; animdefs[i].istexture != 0xff; i++)
+   for(int i = 0; animdefs[i].istexture != 0xff; i++)
    {
-      flags = TF_ANIMATED;
-      
-      // 1/11/98 killough -- removed limit by array-doubling
-      if(lastanim >= anims + maxanims)
+      if(E_IsHexenAnimation(animdefs[i].startname,
+                            animdefs[i].istexture ? EAnimDef::type_wall :
+                            EAnimDef::type_flat))
       {
-         size_t newmax = maxanims ? maxanims*2 : MAXANIMS;
-         anims = erealloc(anim_t *, anims, newmax*sizeof(*anims)); // killough
-         lastanim = anims + maxanims;
-         maxanims = newmax;
-      }
-
-      if(animdefs[i].istexture)
-      {
-         // different episode ?
-         if(R_CheckForWall(animdefs[i].startname) == -1 ||
-            R_CheckForWall(animdefs[i].endname) == -1)
-            continue;
-         
-         lastanim->picnum = R_FindWall(animdefs[i].endname);
-         lastanim->basepic = R_FindWall(animdefs[i].startname);
-      }
-      else
-      {
-         if(R_CheckForFlat(animdefs[i].startname) == -1 ||
-            R_CheckForFlat(animdefs[i].endname) == -1)
-            continue;
-         
-         lastanim->picnum = R_FindFlat(animdefs[i].endname);
-         lastanim->basepic = R_FindFlat(animdefs[i].startname);
-      }
-      
-      lastanim->istexture = !!animdefs[i].istexture;
-      lastanim->numpics = lastanim->picnum - lastanim->basepic + 1;
-      lastanim->speed = SwapLong(animdefs[i].speed); // killough 5/5/98: add LONG()
-
-      // SoM: just to make sure
-      if(lastanim->numpics <= 0)
+         // Allow Hexen-style animations (initialized later) to override this
          continue;
-
-      // sf: include support for swirly water hack
-      if(lastanim->speed < 65536 && lastanim->numpics != 1)
-      {
-         if(lastanim->numpics < 2)
-         {
-            I_Error("P_InitPicAnims: bad cycle from %s to %s\n",
-                     animdefs[i].startname,
-                     animdefs[i].endname);
-         }
       }
-      else
-      {
-         // SoM: it's swirly water
-         flags |= TF_SWIRLY;
-      }
-      
-      // SoM: add flags
-      for(p = lastanim->basepic; p <= lastanim->picnum; p++)
-         textures[p]->flags |= flags;
-
-      lastanim++;
+      P_addPicAnim(animdefs[i]);
    }
-
    Z_ChangeTag(animdefs, PU_CACHE); //jff 3/23/98 allow table to be freed
+
+   for(const EAnimDef *ead : eanimations)
+   {
+      // only process doom-style ones. Also prevent sending illegal definitions
+      // if possible.
+      if(ead->pics.getLength() >= 1)
+         continue;
+      P_applyEDFAnim(*ead);
+   }
 }
 
 //=============================================================================
@@ -1165,8 +1270,11 @@ void P_UpdateSpecials()
    {
       for(int i = anim->basepic; i < anim->basepic + anim->numpics; i++)
       {
-         if((i >= flatstart && i < flatstop && r_swirl) || anim->speed > 65535 || anim->numpics == 1)
+         if((i >= flatstart && i < flatstop && r_swirl) ||
+            anim->speed >= SWIRL_TICS || anim->numpics == 1)
+         {
             texturetranslation[i] = i;
+         }
          else
          {
             pic = anim->basepic + 
@@ -1279,8 +1387,6 @@ void P_SpawnSpecials(UDMFSetupSettings &setupSettings)
    
    PlatThinker::RemoveAllActivePlats(); // killough
 
-   ScrollThinker::RemoveAllScrollers();
-
    // clear buttons (haleyjd 10/16/05: button stuff -> p_switch.c)
    P_ClearButtons();
 
@@ -1307,14 +1413,14 @@ void P_SpawnSpecials(UDMFSetupSettings &setupSettings)
          // killough 3/7/98:
          // support for drawn heights coming from different sector
       case EV_STATIC_TRANSFER_HEIGHTS:
-         sec = sides[*lines[i].sidenum].sector-sectors;
+         sec = eindex(sides[*lines[i].sidenum].sector-sectors);
          P_SetupHeightTransfer(i, sec, setupSettings); // haleyjd 03/04/07
          break;
 
          // killough 3/16/98: Add support for setting
          // floor lighting independently (e.g. lava)
       case EV_STATIC_LIGHT_TRANSFER_FLOOR:
-         sec = sides[*lines[i].sidenum].sector-sectors;
+         sec = eindex(sides[*lines[i].sidenum].sector-sectors);
          for(s = -1; (s = P_FindSectorFromLineArg0(lines+i,s)) >= 0;)
             sectors[s].floorlightsec = sec;
          break;
@@ -1322,7 +1428,7 @@ void P_SpawnSpecials(UDMFSetupSettings &setupSettings)
          // killough 4/11/98: Add support for setting
          // ceiling lighting independently
       case EV_STATIC_LIGHT_TRANSFER_CEILING:
-         sec = sides[*lines[i].sidenum].sector-sectors;
+         sec = eindex(sides[*lines[i].sidenum].sector-sectors);
          for(s = -1; (s = P_FindSectorFromLineArg0(lines+i,s)) >= 0;)
             sectors[s].ceilinglightsec = sec;
          break;
@@ -1828,7 +1934,7 @@ void P_SetLineID(line_t *line, int id)
       int chain = (unsigned int)line->tag % (unsigned int)numlines; // Hash func
    
       line->nexttag = lines[chain].firsttag;   // Prepend linedef to chain
-      lines[chain].firsttag = line - lines;
+      lines[chain].firsttag = eindex(line - lines);
    }
 }
 
@@ -2034,7 +2140,7 @@ static void P_addLineToAttachList(const line_t *line, int *&attached,
          attached = erealloc(int *, attached, sizeof(int) * maxattach);
       }
 
-      attached[numattach++] = line - lines;
+      attached[numattach++] = eindex(line - lines);
    }
 
    // SoM 12/8/02: Don't attach the backsector.
@@ -2182,8 +2288,8 @@ void P_AttachLines(const line_t *cline, bool ceiling)
    numattach = 0;
    for(start = 0; start < alistsize; ++start)
    {
-      int front = lines[alist[start]].frontsector - sectors;
-      int back  = lines[alist[start]].backsector - sectors;
+      int front = eindex(lines[alist[start]].frontsector - sectors);
+      int back  = eindex(lines[alist[start]].backsector - sectors);
 
       // Check the frontsector for uniqueness in the list.
       for(i = 0; i < numattach; ++i)
@@ -2417,7 +2523,7 @@ static void P_attachSectors(UDMFSetupSettings &settings)
          efree(sectors[i].f_asurfaces);
          sectors[i].f_asurfaces = estructalloctag(attachedsurface_t, 
             floornew.getLength(), PU_LEVEL);
-         sectors[i].f_asurfacecount = floornew.getLength();
+         sectors[i].f_asurfacecount = static_cast<int>(floornew.getLength());
          memcpy(sectors[i].f_asurfaces, &floornew[0], 
             sectors[i].f_asurfacecount * sizeof(attachedsurface_t));
       }
@@ -2426,7 +2532,7 @@ static void P_attachSectors(UDMFSetupSettings &settings)
          efree(sectors[i].c_asurfaces);
          sectors[i].c_asurfaces = estructalloctag(attachedsurface_t,
             ceilingnew.getLength(), PU_LEVEL);
-         sectors[i].c_asurfacecount = ceilingnew.getLength();
+         sectors[i].c_asurfacecount = static_cast<int>(ceilingnew.getLength());
          memcpy(sectors[i].c_asurfaces, &ceilingnew[0],
             sectors[i].c_asurfacecount * sizeof(attachedsurface_t));
       }
@@ -2974,7 +3080,7 @@ static void P_SpawnPortal(line_t *line, int staticFn)
       line->sidenum[1] = line->sidenum[0];
       line->flags &= ~ML_BLOCKING;
       line->flags |= ML_TWOSIDED;
-      line->intflags |= MLI_POLYPORTALLINE;
+      line->intflags |= MLI_1SPORTALLINE;
    };
 
    bool otherIsEdge = false;
@@ -3062,7 +3168,7 @@ static void P_SpawnPortal(line_t *line, int staticFn)
       }
 
       // Doom format doesn't allow rotating portals
-      portal = R_GetAnchoredPortal(line - lines, s, false, false, 0);
+      portal = R_GetAnchoredPortal(eindex(line - lines), s, false, false, 0);
       break;
 
    case portal_twoway:
@@ -3107,13 +3213,13 @@ static void P_SpawnPortal(line_t *line, int staticFn)
       if(effects == portal_lineonly)
       {
          // special case for line portals
-         portal = R_GetTwoWayPortal(s, line - lines, false, false, 0);
+         portal = R_GetTwoWayPortal(s, eindex(line - lines), false, false, 0);
          line->beyondportalline = &lines[s];
          P_SetPortal(sector, line, portal, portal_lineonly);
          return;
       }
 
-      portal = R_GetTwoWayPortal(line - lines, s, false, false, 0);
+      portal = R_GetTwoWayPortal(eindex(line - lines), s, false, false, 0);
       break;
 
    case portal_linked:
@@ -3222,7 +3328,7 @@ static void P_SpawnPortal(line_t *line, int staticFn)
       if(staticFn == EV_STATIC_PORTAL_LINE_PARAM_COMPAT &&
          line->args[ev_LinePortal_Arg_Type] != ev_LinePortal_Type_EEClassic)
       {
-         portal = R_GetLinkedPortal(s, line - lines, planez, toid, fromid);
+         portal = R_GetLinkedPortal(s, eindex(line - lines), planez, toid, fromid);
          line->beyondportalline = &lines[s];
          P_SetPortal(sector, line, portal, portal_lineonly);
 
@@ -3252,13 +3358,13 @@ static void P_SpawnPortal(line_t *line, int staticFn)
       {
          if (!otherIsEdge)
          {
-            portal = R_GetLinkedPortal(line - lines, s, planez, fromid, toid);
+            portal = R_GetLinkedPortal(eindex(line - lines), s, planez, fromid, toid);
             lines[s].beyondportalline = line;
             P_SetPortal(lines[s].frontsector, lines + s, portal, portal_lineonly);
          }
          
          // ioanch 20160226: add partner portals
-         portal_t *portal2 = R_GetLinkedPortal(s, line - lines, planez, toid, fromid);
+         portal_t *portal2 = R_GetLinkedPortal(s, eindex(line - lines), planez, toid, fromid);
          line->beyondportalline = &lines[s];
          P_SetPortal(sector, line, portal2, portal_lineonly);
 
@@ -3277,7 +3383,7 @@ static void P_SpawnPortal(line_t *line, int staticFn)
          return;
       }
       else  // prepare it for sector portal
-         portal = R_GetLinkedPortal(line - lines, s, planez, fromid, toid);
+         portal = R_GetLinkedPortal(eindex(line - lines), s, planez, fromid, toid);
       break;
 
    default:

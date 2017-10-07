@@ -280,7 +280,8 @@ int P_GetFriction(const Mobj *mo, int *frictionfactor)
               mo->z <= sectors[sec->heightsec].floorheight &&
               demo_version >= 203)))
          {
-            friction = sec->friction, movefactor = sec->movefactor;
+            friction = sec->friction;
+            movefactor = sec->movefactor;
          }
       }
    }
@@ -623,7 +624,7 @@ static void SpechitOverrun(line_t *ld)
    // the offset of the line in the array times the original structure size to
    // reconstruct the approximate line addresses actually written. In most cases
    // this doesn't matter because of the nature of tmbbox, however.
-   addr = baseaddr + (ld - lines) * 0x3E;
+   addr = static_cast<unsigned>(baseaddr + (ld - lines) * 0x3E);
 
    // Note: only the variables affected up to 20 are known, and it is of no
    // consequence to alter any of the variables between 15 and 20 because they
@@ -1813,7 +1814,12 @@ static bool PIT_ApplyTorque(line_t *ld, polyobj_s *po)
          dist = FixedMul(x,x) + FixedMul(y,y);
 
          while(dist > FRACUNIT*4 && mo->gear < MAXGEAR)
-            ++mo->gear, x >>= 1, y >>= 1, dist >>= 1;
+         {
+            ++mo->gear;
+            x >>= 1;
+            y >>= 1;
+            dist >>= 1;
+         }
          
          mo->momx -= x;
          mo->momy += y;
@@ -2157,14 +2163,26 @@ void P_SlideMove(Mobj *mo)
       // trace along the three leading corners
       
       if(mo->momx > 0)
-         leadx = mo->x + mo->radius, trailx = mo->x - mo->radius;
+      {
+         leadx = mo->x + mo->radius;
+         trailx = mo->x - mo->radius;
+      }
       else
-         leadx = mo->x - mo->radius, trailx = mo->x + mo->radius;
+      {
+         leadx = mo->x - mo->radius;
+         trailx = mo->x + mo->radius;
+      }
 
       if(mo->momy > 0)
-         leady = mo->y + mo->radius, traily = mo->y - mo->radius;
+      {
+         leady = mo->y + mo->radius;
+         traily = mo->y - mo->radius;
+      }
       else
-         leady = mo->y - mo->radius, traily = mo->y + mo->radius;
+      {
+         leady = mo->y - mo->radius;
+         traily = mo->y + mo->radius;
+      }
 
       bestslidefrac = FRACUNIT+1;
       
@@ -2447,7 +2465,7 @@ static bool PIT_ChangeSector(Mobj *thing)
    // crunch dropped items
    if(thing->flags & MF_DROPPED)
    {
-      thing->removeThinker();
+      thing->remove();
       return true;      // keep checking
    }
 
@@ -2621,7 +2639,7 @@ static msecnode_t *P_GetSecnode(void)
    msecnode_t *node;
    
    return headsecnode ?
-      node = headsecnode, headsecnode = node->m_snext, node :
+   void(node = headsecnode), void(headsecnode = node->m_snext), node :
       (msecnode_t *)(Z_Malloc(sizeof *node, PU_LEVEL, NULL)); 
 }
 

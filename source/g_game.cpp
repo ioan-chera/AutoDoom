@@ -688,6 +688,7 @@ void G_DoLoadLevel()
    gameaction = ga_nothing;
    displayplayer = consoleplayer;    // view the guy you are playing
    P_ResetChasecam();    // sf: because displayplayer changed
+   P_ResetWalkcam();
    Z_CheckHeap();
 
    // clear cmd building stuff
@@ -1553,6 +1554,49 @@ static bool G_doFinale()
    return true;
 }
 
+//
+// Kind of next level: the secret or the overt one.
+//
+enum levelkind_t
+{
+   lk_overt,
+   lk_secret
+};
+
+//
+// Gets the name of the next level, either from map-info or explicit next
+//
+static const char *G_getNextLevelName(levelkind_t kind, int map)
+{
+   const char *nextName = kind == lk_secret ? LevelInfo.nextSecret :
+   LevelInfo.nextLevel;
+   if(!wminfo.nextexplicit && nextName && *nextName)
+      return nextName;
+   return G_GetNameForMap(gameepisode, map);
+}
+
+//
+// Setups the MapInfo/LevelInfo fields of wminfo
+//
+static void G_setupMapInfoWMInfo(levelkind_t kind)
+{
+   const intermapinfo_t &next =
+   IN_GetMapInfo(G_getNextLevelName(kind, wminfo.next + 1));
+
+   wminfo.li_lastlevelname = LevelInfo.interLevelName;  // just reference it
+   wminfo.li_nextlevelname = next.levelname;
+
+   wminfo.li_lastlevelpic = LevelInfo.levelPic;
+   wminfo.li_nextlevelpic = next.levelpic;
+
+   const intermapinfo_t &last = IN_GetMapInfo(gamemapname);
+
+   // NOTE: just for exit-pic, do NOT use LevelInfo.interPic! We need to tell if
+   // it was set explicitly in map-info by the author, and intermapinfo_t is
+   // certain to be populated directly from XL_ metatables.
+   wminfo.li_lastexitpic = last.exitpic;
+   wminfo.li_nextenterpic = next.enterpic;
+}
 
 //
 // G_DoCompleted
@@ -1663,6 +1707,8 @@ static void G_DoCompleted()
    
    if(statcopy)
       memcpy(statcopy, &wminfo, sizeof(wminfo));
+
+   G_setupMapInfoWMInfo(secretexit ? lk_secret : lk_overt);
    
    IN_Start(&wminfo);
 }
@@ -1690,19 +1736,11 @@ static void G_DoWorldDone()
    
    // haleyjd: customizable secret exits
    if(secretexit)
-   {
-      if(!wminfo.nextexplicit && *LevelInfo.nextSecret)
-         G_SetGameMapName(LevelInfo.nextSecret);
-      else
-         G_SetGameMapName(G_GetNameForMap(gameepisode, gamemap));
-   }
+      G_SetGameMapName(G_getNextLevelName(lk_secret, gamemap));
    else
    {
       // haleyjd 12/14/01: don't use nextlevel for secret exits here either!
-      if(!wminfo.nextexplicit && *LevelInfo.nextLevel)
-         G_SetGameMapName(LevelInfo.nextLevel);
-      else
-         G_SetGameMapName(G_GetNameForMap(gameepisode, gamemap));
+      G_SetGameMapName(G_getNextLevelName(lk_overt, gamemap));
    }
 
    // haleyjd 10/24/10: if in Master Levels mode, see if the next map exists
@@ -2209,6 +2247,10 @@ void G_PlayerReborn(int player)
    // haleyjd 08/05/13: give reborn inventory
    for(unsigned int i = 0; i < playerclass->numrebornitems; i++)
    {
+      // ignore this item due to cancellation by, ie., DeHackEd?
+      if(playerclass->rebornitems[i].flags & RBIF_IGNORE)
+         continue;
+
       const char   *name   = playerclass->rebornitems[i].itemname;
       int           amount = playerclass->rebornitems[i].amount;
       itemeffect_t *effect = E_ItemEffectForName(name);
@@ -2259,7 +2301,7 @@ static void G_queuePlayerCorpse(Mobj *mo)
       if(bodyque[index] != NULL)
       {
          bodyque[index]->intflags &= ~MIF_PLYRCORPSE;
-         bodyque[index]->removeThinker();
+         bodyque[index]->remove();
       }
       
       mo->intflags |= MIF_PLYRCORPSE;
@@ -2267,7 +2309,7 @@ static void G_queuePlayerCorpse(Mobj *mo)
       bodyqueslot = (bodyqueslot + 1) % queuesize;
    }
    else if(!bodyquesize)
-      mo->removeThinker();   
+      mo->remove();   
 }
 
 //
@@ -2755,6 +2797,7 @@ void G_ReloadDefaults()
    compatibility = false;     // killough 10/98: replaced by comp[] vector
    memcpy(comp, default_comp, sizeof comp);
    
+   vanilla_mode = false;
    demo_version = version;       // killough 7/19/98: use this version's id
    demo_subversion = subversion; // haleyjd 06/17/01
    
@@ -2999,7 +3042,7 @@ void G_InitNew(skill_t skill, char *name)
 
    // haleyjd 06/16/04: set g_dir to d_dir if it is valid, or else restore it
    // to the default value.
-   g_dir = d_dir ? d_dir : (inmanageddir = MD_NONE, &wGlobalDir);
+   g_dir = d_dir ? d_dir : (void(inmanageddir = MD_NONE), &wGlobalDir);
    d_dir = NULL;
    
    G_DoLoadLevel();
@@ -3269,6 +3312,8 @@ void G_SetOldDemoOptions()
 {
    int i;
 
+   vanilla_mode = true;
+
    // support -longtics when recording vanilla format demos
    longtics_demo = (M_CheckParm("-longtics") != 0);
 
@@ -3403,6 +3448,7 @@ void G_BeginRecording()
    // killough 2/22/98: save compatibility flag in new demos
    *demo_p++ = compatibility;       // killough 2/22/98
    
+   vanilla_mode = false;
    demo_version = version;       // killough 7/19/98: use this version's id
    demo_subversion = subversion; // haleyjd 06/17/01
    

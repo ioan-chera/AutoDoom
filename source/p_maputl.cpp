@@ -261,7 +261,7 @@ void P_LineOpening(const line_t *linedef, const Mobj *mo, bool portaldetect,
    }
    clip.openfrontsector = linedef->frontsector;
    clip.openbacksector  = linedef->backsector;
-   sector_t *beyond = linedef->intflags & MLI_POLYPORTALLINE &&
+   sector_t *beyond = linedef->intflags & MLI_1SPORTALLINE &&
       linedef->beyondportalline ?
       linedef->beyondportalline->frontsector : nullptr;
    if(beyond)
@@ -617,7 +617,10 @@ void P_SetThingPosition(Mobj *thing)
          *link = thing;
       }
       else        // thing is off the map
-         thing->bnext = NULL, thing->bprev = NULL;
+      {
+         thing->bnext = NULL;
+         thing->bprev = NULL;
+      }
    }
 }
 

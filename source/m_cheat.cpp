@@ -1033,7 +1033,7 @@ static int M_NukeMonsters()
          }
       }
    }
-   while(!killcount && mask ? mask = 0, 1 : 0);  // killough 7/20/98
+   while(!killcount && mask ? void(mask = 0), 1 : 0);  // killough 7/20/98
 
    return killcount;
 }
@@ -1045,6 +1045,20 @@ CONSOLE_NETCMD(nuke, cf_server|cf_level, netcmd_nuke)
    // killough 3/22/98: make more intelligent about plural
    // Ty 03/27/98 - string(s) *not* externalized
    doom_printf("%d Monster%s Killed", kills,  (kills == 1) ? "" : "s");
+}
+
+//
+// TODO: Perhaps make it so you can run cheats in console by name, like idkfa and such?
+// It would be useful for uses who want to bind cheats to a single button.
+//
+CONSOLE_COMMAND(GIVEARSENAL, cf_notnet|cf_level)
+{
+   cheat_fa(nullptr);
+}
+
+CONSOLE_COMMAND(GIVEKEYS, cf_notnet|cf_level)
+{
+   cheat_k(nullptr);
 }
 
 //----------------------------------------------------------------------------

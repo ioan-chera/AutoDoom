@@ -167,13 +167,13 @@ I_tobiiSnapshotCommitted(TX_CONSTHANDLE hAsyncData, TX_USERPARAM param)
    TX_RESULT asyncResult = TX_RESULT_UNKNOWN;
    result = txGetAsyncDataResultCode(hAsyncData, &asyncResult);
    if(result != TX_RESULT_OK)
-      puts("FAILED OBTAINING ASYNC DATA RESULT CODE");
+      puts("I_Tobii: FAILED OBTAINING ASYNC DATA RESULT CODE");
    if(asyncResult == TX_RESULT_OK)
-      puts("OK commmitting");
+      puts("I_Tobii: OK commmitting");
    else if(asyncResult == TX_RESULT_CANCELLED)
-      puts("CANCELLED committing");
+      puts("I_Tobii: CANCELLED committing");
    else
-      printf("FAILED committing (%d)\n", asyncResult);
+      printf("I_Tobii: FAILED committing (%d)\n", asyncResult);
 }
 
 //
@@ -187,24 +187,24 @@ I_tobiiConnectionStateChanged(TX_CONNECTIONSTATE state, TX_USERPARAM userParam)
    switch(state)
    {
    case TX_CONNECTIONSTATE_CONNECTED:
-      puts("Connected");
+      puts("I_Tobii: Connected");
       result = txCommitSnapshotAsync(g_globalInteractorSnapshot, I_tobiiSnapshotCommitted, nullptr);
       if(result != TX_RESULT_OK)
          puts("FAILED INITIALIZING DATA STREAM");
       break;
    case TX_CONNECTIONSTATE_DISCONNECTED:
-      puts("Disconnected");
+      puts("I_Tobii: Disconnected");
       break;
    case TX_CONNECTIONSTATE_TRYINGTOCONNECT:
-      puts("Trying to connect");
+      puts("I_Tobii: Trying to connect");
       break;
    case TX_CONNECTIONSTATE_SERVERVERSIONTOOLOW:
       // TODO: print warning message
-      puts("Server version too low");
+      puts("I_Tobii: Server version too low");
       break;
    case TX_CONNECTIONSTATE_SERVERVERSIONTOOHIGH:
       // TODO: print warning message
-      puts("Server version too high");
+      puts("I_Tobii: Server version too high");
       break;
    }
 }

@@ -53,6 +53,7 @@
 #include "s_sound.h"
 #include "sounds.h"
 #include "st_stuff.h"
+#include "version.h"
 
 //
 // Movement.
@@ -598,7 +599,7 @@ inline static bool P_SectorIsSpecial(const sector_t *sector)
 static void P_handleGaze(const player_t &player)
 {
    const ticcmd_t &cmd = player.cmd;
-   if(cmd.eyeyaw == D_MAXINT)
+   if(cmd.eyeyaw == D_MAXINT || demo_version < VERSION_MIN_EYETRACK)
       return;  // no gaze detected
 
    fixed_t slope = finetangent[(cmd.eyepitch + ANG90) >> ANGLETOFINESHIFT];

@@ -157,7 +157,7 @@ int             mouseAccel_type = 0;
 int             mouseAccel_threshold = 10; // [CG] 01/20/12
 double          mouseAccel_value = 2.0;    // [CG] 01/20/12
 
-static double g_eyeYaw, g_eyePitch;
+static double g_eyeYaw = NAN, g_eyePitch = NAN;
 
 //
 // controls (have defaults)
@@ -1372,6 +1372,20 @@ static void G_ReadDemoTiccmd(ticcmd_t *cmd)
          cmd->fly = *demo_p++;
       else
          cmd->fly = 0;
+
+      if(demo_version >= VERSION_MIN_EYETRACK)
+      {
+         cmd->eyeyaw = *demo_p++;
+         cmd->eyeyaw |= *demo_p++ << 8;
+         cmd->eyeyaw |= *demo_p++ << 16;
+         cmd->eyeyaw |= *demo_p++ << 24;
+         cmd->eyepitch = *demo_p++;
+         cmd->eyepitch |= *demo_p++ << 8;
+         cmd->eyepitch |= *demo_p++ << 16;
+         cmd->eyepitch |= *demo_p++ << 24;
+      }
+      else
+         cmd->eyeyaw = cmd->eyepitch = D_MAXINT;
       
       // killough 3/26/98, 10/98: Ignore savegames in demos 
       if(demoplayback && 
@@ -1428,6 +1442,18 @@ static void G_WriteDemoTiccmd(ticcmd_t *cmd)
 
    if(full_demo_version >= make_full_version(340, 23))
       demo_p[i] = cmd->fly;
+
+   if(demo_version >= VERSION_MIN_EYETRACK)
+   {
+      demo_p[++i] = cmd->eyeyaw & 0xff;
+      demo_p[++i] = cmd->eyeyaw >> 8 & 0xff;
+      demo_p[++i] = cmd->eyeyaw >> 16 & 0xff;
+      demo_p[++i] = cmd->eyeyaw >> 24 & 0xff;
+      demo_p[++i] = cmd->eyepitch & 0xff;
+      demo_p[++i] = cmd->eyepitch >> 8 & 0xff;
+      demo_p[++i] = cmd->eyepitch >> 16 & 0xff;
+      demo_p[++i] = cmd->eyepitch >> 24 & 0xff;
+   }
    
    if(position + 16 > maxdemosize)   // killough 8/23/98
    {

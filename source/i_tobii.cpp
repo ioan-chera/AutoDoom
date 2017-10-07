@@ -29,7 +29,7 @@
 #include "d_main.h"
 #include "doomstat.h"
 #include "hal/i_platform.h"
-#include "i_tobii2.h"
+#include "i_tobii.h"
 #include "v_misc.h"
 
 #if EE_CURRENT_PLATFORM == EE_PLATFORM_WINDOWS

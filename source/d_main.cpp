@@ -59,11 +59,10 @@
 #include "g_game.h"
 #include "g_gfs.h"
 #include "hal/i_timer.h"
-#include "hal/i_tobii.h"
 #include "hu_stuff.h"
 #include "i_sound.h"
 #include "i_system.h"
-#include "i_tobii2.h"
+#include "i_tobii.h"
 #include "i_video.h"
 #include "in_lude.h"
 #include "m_argv.h"
@@ -1252,27 +1251,6 @@ static void D_startEyeTracker()
 {
    if(I_EyeInit())
       atexit(I_EyeShutdown);
-   // Try to start eye tracker
-   i_tobiiAvail tobiiAvail = I_TobiiIsAvailable();
-   switch(tobiiAvail)
-   {
-   case i_tobiiAvail::error:
-      startupmsg("I_TobiiInit", "FAILED checking if it's available");
-      break;
-   case i_tobiiAvail::notInstalled:
-      startupmsg("I_TobiiInit", "not installed");
-      break;
-   case i_tobiiAvail::notRunning:
-      startupmsg("I_TobiiInit", "not running");
-      break;
-   case i_tobiiAvail::yes:
-      startupmsg("I_TobiiInit", "available");
-      if(!I_TobiiInit())
-         startupmsg("I_TobiiInit", "FAILED initializing!");
-      else
-         atexit(I_TobiiShutdown);
-      break;
-   }
 }
 
 //

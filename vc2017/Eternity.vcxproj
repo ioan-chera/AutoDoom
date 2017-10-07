@@ -108,7 +108,7 @@
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <OmitFramePointers>true</OmitFramePointers>
       <WholeProgramOptimization>true</WholeProgramOptimization>
-      <AdditionalIncludeDirectories>$(SDL1_2)\include;$(SDLMIXER1_2)\include;$(SDLNET1_2)\include;..\source\win32;..\libpng;..\acsvm;..\midiproc;..\..\TobiiEyeXSdk-Cpp-1.8.498\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SDL1_2)\include;$(SDLMIXER1_2)\include;$(SDLNET1_2)\include;..\source\win32;..\libpng;..\acsvm;..\midiproc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>NDEBUG;R_LINKEDPORTALS;WIN32;_CONSOLE;_SDL_VER;HAVE_SPCLIB;EE_FEATURE_OPENGL;HAVE_STDINT_H;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_WARNINGS;EE_FEATURE_REGISTRYSCAN;EE_FEATURE_MIDIRPC;EE_FEATURE_XINPUT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
@@ -128,7 +128,7 @@
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>./Release/snes_spc.lib;./Release/libpng.lib;./Release/zlib.lib;./Release/ACSVM.lib;$(SDL1_2)\lib\x86\sdl.lib;$(SDLMIXER1_2)\lib\x86\sdl_mixer.lib;$(SDLNET1_2)\lib\x86\sdl_net.lib;oldnames.lib;opengl32.lib;rpcrt4.lib;..\..\TobiiEyeXSdk-Cpp-1.8.498\lib\x86\Tobii.EyeX.Client.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>./Release/snes_spc.lib;./Release/libpng.lib;./Release/zlib.lib;./Release/ACSVM.lib;$(SDL1_2)\lib\x86\sdl.lib;$(SDLMIXER1_2)\lib\x86\sdl_mixer.lib;$(SDLNET1_2)\lib\x86\sdl_net.lib;oldnames.lib;opengl32.lib;rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>.\Release/Eternity.exe</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
@@ -174,7 +174,7 @@
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <OmitFramePointers>true</OmitFramePointers>
       <WholeProgramOptimization>true</WholeProgramOptimization>
-      <AdditionalIncludeDirectories>$(SDL1_2)\include;$(SDLMIXER1_2)\include;$(SDLNET1_2)\include;..\source\win32;..\libpng;..\acsvm;..\midiproc;..\..\TobiiEyeXSdk-Cpp-1.8.498\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SDL1_2)\include;$(SDLMIXER1_2)\include;$(SDLNET1_2)\include;..\source\win32;..\libpng;..\acsvm;..\midiproc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>NDEBUG;R_LINKEDPORTALS;WIN32;_CONSOLE;_SDL_VER;HAVE_SPCLIB;EE_FEATURE_OPENGL;HAVE_STDINT_H;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_WARNINGS;EE_FEATURE_REGISTRYSCAN;EE_FEATURE_MIDIRPC;EE_FEATURE_XINPUT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
@@ -194,7 +194,7 @@
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>./x64/Release/snes_spc.lib;./x64/Release/libpng.lib;./x64/Release/zlib.lib;./x64/Release/ACSVM.lib;$(SDL1_2)\lib\x64\sdl.lib;$(SDLMIXER1_2)\lib\x64\sdl_mixer.lib;$(SDLNET1_2)\lib\x64\sdl_net.lib;oldnames.lib;opengl32.lib;rpcrt4.lib;..\..\TobiiEyeXSdk-Cpp-1.8.498\lib\x64\Tobii.EyeX.Client.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>./x64/Release/snes_spc.lib;./x64/Release/libpng.lib;./x64/Release/zlib.lib;./x64/Release/ACSVM.lib;$(SDL1_2)\lib\x64\sdl.lib;$(SDLMIXER1_2)\lib\x64\sdl_mixer.lib;$(SDLNET1_2)\lib\x64\sdl_net.lib;oldnames.lib;opengl32.lib;rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>.\x64/Release/Eternity.exe</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
@@ -233,7 +233,7 @@
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(SDL1_2)\include;$(SDLMIXER1_2)\include;$(SDLNET1_2)\include;..\source\win32;..\libpng;..\acsvm;..\midiproc;..\..\TobiiEyeXSdk-Cpp-1.8.498\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SDL1_2)\include;$(SDLMIXER1_2)\include;$(SDLNET1_2)\include;..\source\win32;..\libpng;..\acsvm;..\midiproc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_DEBUG;RANGECHECK;INSTRUMENTED;ZONEIDCHECK;R_LINKEDPORTALS;WIN32;_CONSOLE;_SDL_VER;HAVE_SPCLIB;EE_FEATURE_OPENGL;HAVE_STDINT_H;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_WARNINGS;EE_FEATURE_REGISTRYSCAN;EE_FEATURE_MIDIRPC;EE_FEATURE_XINPUT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>true</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -252,7 +252,7 @@
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>./Debug/snes_spc.lib;./Debug/libpng.lib;./Debug/zlib.lib;./Debug/ACSVM.lib;$(SDL1_2)\lib\x86\sdl.lib;$(SDLMIXER1_2)\lib\x86\sdl_mixer.lib;$(SDLNET1_2)\lib\x86\sdl_net.lib;oldnames.lib;opengl32.lib;rpcrt4.lib;..\..\TobiiEyeXSdk-Cpp-1.8.498\lib\x86\Tobii.EyeX.Client.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>./Debug/snes_spc.lib;./Debug/libpng.lib;./Debug/zlib.lib;./Debug/ACSVM.lib;$(SDL1_2)\lib\x86\sdl.lib;$(SDLMIXER1_2)\lib\x86\sdl_mixer.lib;$(SDLNET1_2)\lib\x86\sdl_net.lib;oldnames.lib;opengl32.lib;rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>.\Debug/Eternity.exe</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
@@ -291,7 +291,7 @@
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(SDL1_2)\include;$(SDLMIXER1_2)\include;$(SDLNET1_2)\include;..\source\win32;..\libpng;..\acsvm;..\midiproc;..\..\TobiiEyeXSdk-Cpp-1.8.498\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SDL1_2)\include;$(SDLMIXER1_2)\include;$(SDLNET1_2)\include;..\source\win32;..\libpng;..\acsvm;..\midiproc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_DEBUG;RANGECHECK;INSTRUMENTED;ZONEIDCHECK;R_LINKEDPORTALS;WIN32;_CONSOLE;_SDL_VER;HAVE_SPCLIB;EE_FEATURE_OPENGL;HAVE_STDINT_H;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_WARNINGS;EE_FEATURE_REGISTRYSCAN;EE_FEATURE_MIDIRPC;EE_FEATURE_XINPUT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -309,7 +309,7 @@
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>./x64/Debug/snes_spc.lib;./x64/Debug/libpng.lib;./x64/Debug/zlib.lib;./x64/Debug/ACSVM.lib;$(SDL1_2)\lib\x64\sdl.lib;$(SDLMIXER1_2)\lib\x64\sdl_mixer.lib;$(SDLNET1_2)\lib\x64\sdl_net.lib;oldnames.lib;opengl32.lib;rpcrt4.lib;..\..\TobiiEyeXSdk-Cpp-1.8.498\lib\x64\Tobii.EyeX.Client.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>./x64/Debug/snes_spc.lib;./x64/Debug/libpng.lib;./x64/Debug/zlib.lib;./x64/Debug/ACSVM.lib;$(SDL1_2)\lib\x64\sdl.lib;$(SDLMIXER1_2)\lib\x64\sdl_mixer.lib;$(SDLNET1_2)\lib\x64\sdl_net.lib;oldnames.lib;opengl32.lib;rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>.\x64/Debug/Eternity.exe</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
@@ -769,7 +769,6 @@
     </ClCompile>
     <ClCompile Include="..\source\hal\i_directory.cpp" />
     <ClCompile Include="..\source\hal\i_timer.cpp" />
-    <ClCompile Include="..\source\hal\i_tobii.cpp" />
     <ClCompile Include="..\Source\hu_frags.cpp">
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -820,7 +819,7 @@
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
-    <ClCompile Include="..\source\i_tobii2.cpp" />
+    <ClCompile Include="..\source\i_tobii.cpp" />
     <ClCompile Include="..\source\mn_items.cpp" />
     <ClCompile Include="..\source\m_utils.cpp" />
     <ClCompile Include="..\source\p_portalclip.cpp" />
@@ -2136,13 +2135,12 @@
     <ClInclude Include="..\Source\g_gfs.h" />
     <ClInclude Include="..\source\hal\i_directory.h" />
     <ClInclude Include="..\source\hal\i_timer.h" />
-    <ClInclude Include="..\source\hal\i_tobii.h" />
     <ClInclude Include="..\Source\Hu_frags.h" />
     <ClInclude Include="..\Source\Hu_over.h" />
     <ClInclude Include="..\Source\Hu_stuff.h" />
     <ClInclude Include="..\Source\hi_stuff.h" />
     <ClInclude Include="..\Source\in_lude.h" />
-    <ClInclude Include="..\source\i_tobii2.h" />
+    <ClInclude Include="..\source\i_tobii.h" />
     <ClInclude Include="..\source\metaspawn.h" />
     <ClInclude Include="..\source\mn_items.h" />
     <ClInclude Include="..\source\m_binary.h" />

@@ -37,8 +37,7 @@
 #include "../doomstat.h"
 #include "../f_wipe.h"
 #include "../i_system.h"
-#include "i_tobii.h"
-#include "../i_tobii2.h"
+#include "../i_tobii.h"
 #include "../i_video.h"
 #include "../in_lude.h"
 #include "../m_argv.h"
@@ -442,7 +441,6 @@ static bool I_InitGraphicsMode()
       setsizeneeded    = true;  // should initialize screen size
    }
 
-   I_TobiiUpdateWindow();
    I_EyeAttachToWindow();
 
    return result;

@@ -972,9 +972,6 @@
     <ClCompile Include="..\source\s_musinfo.cpp">
       <Filter>Source Files\S_\S_ Source</Filter>
     </ClCompile>
-    <ClCompile Include="..\source\hal\i_tobii.cpp">
-      <Filter>Source Files\HAL\HAL Source</Filter>
-    </ClCompile>
     <ClCompile Include="..\source\xl_umapinfo.cpp">
       <Filter>Source Files\XL_\XL_ Source</Filter>
     </ClCompile>
@@ -987,7 +984,7 @@
     <ClCompile Include="..\source\e_switch.cpp">
       <Filter>Source Files\E_\E_ Source</Filter>
     </ClCompile>
-    <ClCompile Include="..\source\i_tobii2.cpp">
+    <ClCompile Include="..\source\i_tobii.cpp">
       <Filter>Source Files\I_</Filter>
     </ClCompile>
   </ItemGroup>
@@ -1739,9 +1736,6 @@
     <ClInclude Include="..\source\s_musinfo.h">
       <Filter>Source Files\S_\S_ Headers</Filter>
     </ClInclude>
-    <ClInclude Include="..\source\hal\i_tobii.h">
-      <Filter>Source Files\HAL\HAL Headers</Filter>
-    </ClInclude>
     <ClInclude Include="..\source\xl_umapinfo.h">
       <Filter>Source Files\XL_\XL_ Headers</Filter>
     </ClInclude>
@@ -1754,7 +1748,7 @@
     <ClInclude Include="..\source\e_switch.h">
       <Filter>Source Files\E_\E_ Headers</Filter>
     </ClInclude>
-    <ClInclude Include="..\source\i_tobii2.h">
+    <ClInclude Include="..\source\i_tobii.h">
       <Filter>Source Files\I_</Filter>
     </ClInclude>
   </ItemGroup>

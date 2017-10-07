@@ -29,7 +29,7 @@
 // HAL modules
 #include "../hal/i_platform.h"
 #include "../hal/i_gamepads.h"
-#include "../i_tobii2.h"
+#include "../i_tobii.h"
 
 #include "../c_io.h"
 #include "../c_runcmd.h"

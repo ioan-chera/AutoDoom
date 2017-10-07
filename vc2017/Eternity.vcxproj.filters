@@ -1730,10 +1730,9 @@
     <ClInclude Include="..\source\s_musinfo.h">
       <Filter>Source Files\S_\S_ Headers</Filter>
     </ClInclude>
-<<<<<<< HEAD
     <ClInclude Include="..\source\hal\i_tobii.h">
       <Filter>Source Files\HAL\HAL Headers</Filter>
-=======
+    </ClInclude>
     <ClInclude Include="..\source\xl_umapinfo.h">
       <Filter>Source Files\XL_\XL_ Headers</Filter>
     </ClInclude>
@@ -1745,7 +1744,6 @@
     </ClInclude>
     <ClInclude Include="..\source\e_switch.h">
       <Filter>Source Files\E_\E_ Headers</Filter>
->>>>>>> master
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

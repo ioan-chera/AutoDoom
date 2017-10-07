@@ -29,7 +29,8 @@
 #include "i_tobii2.h"
 #include "v_misc.h"
 
-static tobii_api_t *api;   // The Stream Engine API
+static tobii_api_t *api;      // The Stream Engine API
+static tobii_device_t *dev;   // The loaded device
 
 //
 // Allocator callback
@@ -52,6 +53,7 @@ inline static void I_free(void *mem_context, void *ptr)
 //
 static void I_log(void *log_context, tobii_log_level_t level, char const *text)
 {
+#if 0
    switch(level)
    {
    case TOBII_LOG_LEVEL_ERROR:
@@ -74,9 +76,14 @@ static void I_log(void *log_context, tobii_log_level_t level, char const *text)
    default:
       break;
    }
+#endif
 
+   // Keep them only to debug because they're really dense.
 #ifdef _DEBUG
-   char c = level == TOBII_LOG_LEVEL_ERROR ? 'E' : level == TOBII_LOG_LEVEL_WARN ? 'W' : level == TOBII_LOG_LEVEL_INFO ? 'I' : level == TOBII_LOG_LEVEL_DEBUG ? 'D' : 'T';
+   char c = level == TOBII_LOG_LEVEL_ERROR ? 'E' : 
+      level == TOBII_LOG_LEVEL_WARN ? 'W' : 
+      level == TOBII_LOG_LEVEL_INFO ? 'I' : 
+      level == TOBII_LOG_LEVEL_DEBUG ? 'D' : 'T';
    printf("Stream(%c): %s\n", c, text);
 #endif
 }
@@ -100,10 +107,20 @@ bool I_EyeInit()
    tobii_error_t err = tobii_api_create(&api, &allocator, &logger);
    if(err != TOBII_ERROR_NO_ERROR)
    {
-      usermsg("I_EyeInit: Failed initializing Stream Engine: %s", 
+      usermsg("I_EyeInit: Failed initializing Stream Engine. %s", 
          tobii_error_message(err));
       return false;
    }
+
+   // TODO: add hotplugging support.
+   err = tobii_device_create(api, nullptr, &dev);
+   if(err != TOBII_ERROR_NO_ERROR)
+   {
+      usermsg("I_EyeInit: Failed loading device. %s", tobii_error_message(err));
+      I_EyeShutdown();
+      return false;
+   }
+
    startupmsg("I_EyeInit", "Loaded Stream Engine.");
    
    return true;
@@ -114,7 +131,10 @@ bool I_EyeInit()
 //
 void I_EyeShutdown()
 {
+   tobii_device_destroy(dev);
+   dev = nullptr;
    tobii_api_destroy(api);
+   api = nullptr;
 }
 
 // EOF

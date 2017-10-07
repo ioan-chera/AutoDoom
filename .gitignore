@@ -18,3 +18,4 @@
 
 build/
 *.kdev4
+vc2017/packages/

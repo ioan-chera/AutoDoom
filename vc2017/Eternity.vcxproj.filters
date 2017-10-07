@@ -235,6 +235,9 @@
     <Filter Include="Source Files\XL_\XL_ Source">
       <UniqueIdentifier>{09ccd1ab-91bb-4216-9ff4-c314b45f28c8}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Tobii">
+      <UniqueIdentifier>{72826839-60c7-4251-bf51-9383db473296}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\source\acs_func.cpp">
@@ -1750,6 +1753,13 @@
     <None Include="res\ee.ico">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="Tobii\SDK-License.pdf">
+      <Filter>Tobii</Filter>
+    </None>
+    <None Include="Tobii\API-Reference.pdf">
+      <Filter>Tobii</Filter>
+    </None>
+    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Eternity.rc" />

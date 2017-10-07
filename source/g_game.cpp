@@ -255,8 +255,8 @@ void G_BuildTiccmd(ticcmd_t *cmd)
 
    if(g_eyePitch != NAN)
    {
-      cmd->eyepitch = ANG180 / PI * g_eyePitch;
-      cmd->eyeyaw = ANG180 / PI * g_eyeYaw;
+      cmd->eyepitch = static_cast<angle_t>(static_cast<int32_t>(ANG180 / PI * g_eyePitch));
+      cmd->eyeyaw = static_cast<angle_t>(static_cast<int32_t>(ANG180 / PI * g_eyeYaw));
       g_eyePitch = NAN;
    }
    else

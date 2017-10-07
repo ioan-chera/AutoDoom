@@ -7,7 +7,9 @@
 #include "i_tobii.h"
 #include "../m_qstr.h"
 
+#ifndef INTMAX_MAX
 #define INTMAX_MAX 0x7fffffffffffffffLL
+#endif
 #include <mutex>
 
 static const TX_CONSTSTRING g_interactorId = "EyeId";

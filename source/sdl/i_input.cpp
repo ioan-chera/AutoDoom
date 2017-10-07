@@ -573,7 +573,6 @@ static void I_GetEvent()
    double etx, ety;
    if(I_TobiiGetEvent(etx, ety))
    {
-      // TODO: think of it
       eyeevent.data2 = etx;
       eyeevent.data3 = ety;
       D_PostEvent(&eyeevent);

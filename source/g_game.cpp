@@ -1466,7 +1466,7 @@ static void G_WriteDemoTiccmd(ticcmd_t *cmd)
       demo_p[++i] = cmd->eyepitch >> 24 & 0xff;
    }
    
-   if(position + 16 > maxdemosize)   // killough 8/23/98
+   if(position + sizeof(ticcmd_t) + sizeof(uint32_t) > maxdemosize)   // killough 8/23/98
    {
       // no more space
       maxdemosize += 128*1024;   // add another 128K  -- killough

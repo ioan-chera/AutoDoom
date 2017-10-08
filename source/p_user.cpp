@@ -602,7 +602,10 @@ static void P_handleGaze(const player_t &player)
    if(cmd.eyeyaw == D_MAXINT || demo_version < VERSION_MIN_EYETRACK)
       return;  // no gaze detected
 
-   fixed_t slope = finetangent[(cmd.eyepitch + ANG90) >> ANGLETOFINESHIFT];
+   unsigned fineangle = (cmd.eyepitch + ANG90) >> ANGLETOFINESHIFT;
+   if(fineangle >= earrlen(finetangent))
+      return;
+   fixed_t slope = finetangent[fineangle];
 
    // From viewx, viewy, viewz calculate path
    CAM_GazeAttack(player.mo, player.mo->angle + cmd.eyeyaw, MISSILERANGE / 2, slope);

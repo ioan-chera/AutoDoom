@@ -1103,6 +1103,38 @@ static int render_ticker = 0;
 extern void R_UntaintPortals();
 
 //
+// Draws gaze trace in demos
+//
+static void R_DrawGazeTrace(const ticcmd_t &cmd)
+{
+   if(cmd.eyepitch == D_MAXINT || cmd.eyeyaw == D_MAXINT)
+      return;
+   double yaw = cmd.eyeyaw * PI / ANG180;
+   double x = -tan(yaw) / tan(fov / 2 * PI / 180.0);
+   x = (x + 1) / 2;
+   
+   double pitch = cmd.eyepitch * PI / ANG180;
+   double y = -tan(pitch) * viewwindow.width / viewwindow.height / tan(fov / 2 * PI / 180.0);
+   y = (y + 1) / 2;
+
+   int col = (int)round(viewwindow.x + viewwindow.width * x);
+   int row = (int)round(viewwindow.y + viewwindow.height * y);
+
+   double yscale = video.height / SCREENHEIGHT;
+   
+   double radius = yscale * 12;
+
+   for(double i = 0; i < 2 * PI; i += PI / 64)
+   {
+      x = col + radius * cos(i);
+      y = row + radius * sin(i);
+
+      if(x >= 0 && x < video.width && y >= 0 && y < video.height)
+         renderscreen[(int)y * linesize + (int)x] = GameModeInfo->whiteIndex;
+   }
+}
+
+//
 // R_RenderPlayerView
 //
 // Primary renderer entry point.
@@ -1174,6 +1206,9 @@ void R_RenderPlayerView(player_t* player, camera_t *camerapoint)
    // haleyjd: remove sector interpolations
    if(view.lerp != FRACUNIT)
       R_setSectorInterpolationState(SEC_NORMAL);
+
+   if(demoplayback && player)
+      R_DrawGazeTrace(player->cmd);
    
    // Check for new console commands.
    NetUpdate();

@@ -1466,7 +1466,10 @@ static void G_WriteDemoTiccmd(ticcmd_t *cmd)
       demo_p[++i] = cmd->eyepitch >> 24 & 0xff;
    }
    
-   if(position + sizeof(ticcmd_t) + sizeof(uint32_t) > maxdemosize)   // killough 8/23/98
+   // NOTE: the distance is *double* that of (ticcmd_t + trailer) because on
+   // Release builds, if ticcmd_t becomes larger, just using the simple value
+   // would lock up the program when calling realloc!
+   if(position + 2 * (sizeof(ticcmd_t) + sizeof(uint32_t)) > maxdemosize)   // killough 8/23/98
    {
       // no more space
       maxdemosize += 128*1024;   // add another 128K  -- killough

@@ -65,6 +65,7 @@
 #include "hu_stuff.h"
 #include "i_sound.h"
 #include "i_system.h"
+#include "i_tobii.h"
 #include "i_video.h"
 #include "in_lude.h"
 #include "m_argv.h"
@@ -1260,6 +1261,15 @@ void D_sanityCheck()
 }
 
 //
+// Tries to start the eye tracker subsystem
+//
+static void D_startEyeTracker()
+{
+   if(I_EyeInit())
+      atexit(I_EyeShutdown);
+}
+
+//
 // D_DoomInit
 //
 // Broke D_DoomMain into two functions in order to keep
@@ -1666,6 +1676,8 @@ static void D_DoomInit()
 
    startupmsg("I_Init","Setting up machine state.");
    I_Init();
+
+   D_startEyeTracker();
 
    // devparm override of early set graphics mode
    if(!textmode_startup && !devparm)

@@ -20,6 +20,8 @@
 #ifndef VERSION_H__
 #define VERSION_H__
 
+#define VERSION_MIN_EYETRACK 400 // special version for eyetracking builds
+
 // DOOM version
 // enum { VERSION =  203 };
 extern int version;              // sf: made version an int

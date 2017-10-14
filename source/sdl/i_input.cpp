@@ -29,6 +29,7 @@
 // HAL modules
 #include "../hal/i_platform.h"
 #include "../hal/i_gamepads.h"
+#include "../i_tobii.h"
 
 #include "../c_io.h"
 #include "../c_runcmd.h"
@@ -561,11 +562,32 @@ static void I_GetEvent()
    event_t    d_event        = { ev_keydown, 0, 0, 0, '\0' };
    event_t    mouseevent     = { ev_mouse,   0, 0, 0, '\0' };
    event_t    tempevent      = { ev_keydown, 0, 0, 0, '\0' }; 
+   event_t    eyeevent       = { ev_eyetracking,0,0,0,'\0' };
 
    // [CG] 01/31/2012: Ensure we have the latest info about focus and mouse
    //                  grabbing.
    UpdateFocus();
    UpdateGrab();
+
+   // Check eye tracking
+   double etx, ety;
+   bool present;
+   unsigned gotEyeEvents;
+   I_EyeGetEvent(etx, ety, present, gotEyeEvents);
+   if(gotEyeEvents & EYE_EVENT_GAZE)
+   {
+      eyeevent.data1 |= EV_EYE_GAZE;
+      eyeevent.data2 = etx;
+      eyeevent.data3 = ety;
+   }
+   if(gotEyeEvents & EYE_EVENT_PRESENCE)
+   {
+      eyeevent.data1 |= EV_EYE_PRESENCE;
+      if(present)
+         eyeevent.data1 |= EV_EYE_PRESENCE_YES;
+   }
+   if(gotEyeEvents)
+      D_PostEvent(&eyeevent);
 
    while(SDL_PollEvent(&ev))
    {

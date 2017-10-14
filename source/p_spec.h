@@ -1577,6 +1577,7 @@ void P_UpdateSpecials();
 bool P_UseSpecialLine(Mobj *thing, line_t *line, int side);
 
 void P_ShootSpecialLine(Mobj *thing, line_t *line, int side);
+void P_GazeSpecialLine(Mobj *thing, line_t *line, int side);
 
 // killough 11/98
 void P_CrossSpecialLine(line_t *, int side, Mobj *thing, polyobj_s *poly); 
@@ -1674,6 +1675,7 @@ enum
    SPAC_USE,
    SPAC_IMPACT,
    SPAC_PUSH,
+   SPAC_GAZE,
 };
 
 extern void P_StartLineScript(line_t *line, int side, Mobj *thing, polyobj_s *po);

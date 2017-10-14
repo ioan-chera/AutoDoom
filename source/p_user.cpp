@@ -30,6 +30,7 @@
 #include "a_small.h"
 #include "c_net.h"
 #include "c_runcmd.h"
+#include "cam_sight.h"
 #include "doomstat.h"
 #include "d_event.h"
 #include "d_gi.h"
@@ -52,6 +53,7 @@
 #include "s_sound.h"
 #include "sounds.h"
 #include "st_stuff.h"
+#include "version.h"
 
 //
 // Movement.
@@ -592,6 +594,24 @@ inline static bool P_SectorIsSpecial(const sector_t *sector)
 }
 
 //
+// Handles gaze interaction with the environment
+//
+static void P_handleGaze(const player_t &player)
+{
+   const ticcmd_t &cmd = player.cmd;
+   if(cmd.eyeyaw == D_MAXINT || demo_version < VERSION_MIN_EYETRACK)
+      return;  // no gaze detected
+
+   unsigned fineangle = (cmd.eyepitch + ANG90) >> ANGLETOFINESHIFT;
+   if(fineangle >= earrlen(finetangent))
+      return;
+   fixed_t slope = finetangent[fineangle];
+
+   // From viewx, viewy, viewz calculate path
+   CAM_GazeAttack(player.mo, player.mo->angle + cmd.eyeyaw, MISSILERANGE / 2, slope);
+}
+
+//
 // P_PlayerThink
 //
 void P_PlayerThink(player_t *player)
@@ -872,6 +892,9 @@ void P_PlayerThink(player_t *player)
 
    // haleyjd 01/21/07: clear earthquake flag before running quake thinkers later
    player->quake = 0;
+
+   // Handle gaze
+   P_handleGaze(*player);
 }
 
 //

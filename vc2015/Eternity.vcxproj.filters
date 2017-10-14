@@ -1028,6 +1028,9 @@
     </ClCompile>
     <ClCompile Include="..\source\autodoom\glbsp\wad.c">
       <Filter>Source Files\autodoom\glbsp</Filter>
+	</ClCompile>
+    <ClCompile Include="..\source\hal\i_tobii.cpp">
+      <Filter>Source Files\HAL\HAL Source</Filter>
     </ClCompile>
     <ClCompile Include="..\source\cam_aim.cpp">
       <Filter>Source Files\Cam</Filter>
@@ -1880,6 +1883,9 @@
     <ClInclude Include="..\source\autodoom\glbsp\wad.h">
       <Filter>Source Files\autodoom\glbsp</Filter>
     </ClInclude>
+    <ClInclude Include="..\source\hal\i_tobii.h">
+      <Filter>Source Files\HAL\HAL Headers</Filter>
+    </ClCompile>
     <ClInclude Include="..\source\cam_common.h">
       <Filter>Source Files\Cam</Filter>
     </ClInclude>

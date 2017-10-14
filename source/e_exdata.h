@@ -77,6 +77,7 @@ enum
    EX_ML_LOWERPORTAL  = 0x00004000, // extends the floor portal of the back sector
    EX_ML_UPPERPORTAL  = 0x00008000, // extends the ceiling portal of the back sector
    EX_ML_POLYOBJECT   = 0x00010000, // enabled for polyobjects
+   EX_ML_GAZE         = 0x00020000, // gaze-interaction
 };
 
 // ExtraData line structure

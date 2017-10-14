@@ -21,3 +21,4 @@ build/
 *.lmp
 *.kdev4
 *.cache.gz
+vc2017/packages/

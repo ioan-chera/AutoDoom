@@ -66,6 +66,9 @@ fixed_t CAM_AimLineAttack(const Mobj *t1, angle_t angle, fixed_t distance,
 void CAM_LineAttack(Mobj *source, angle_t angle, fixed_t distance, 
                     fixed_t slope, int damage);
 
+void CAM_GazeAttack(Mobj *source, angle_t angle, fixed_t distance,
+   fixed_t slope);
+
 // ioanch 20160131: use lines
 void CAM_UseLines(const player_t *player);
 

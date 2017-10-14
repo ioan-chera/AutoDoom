@@ -604,9 +604,24 @@ static void ST_updateFaceWidget()
    // look left or look right if the facecount has timed out
    if(!st_facecount)
    {
-      // sf: remove st_randomnumber
-      st_faceindex = ST_calcPainOffset() + (M_Random() % 3);
-      st_facecount = ST_STRAIGHTFACECOUNT;
+      angle_t eye = plyr->cmd.eyeyaw;
+      if(eye != D_MAXINT)
+      {
+         if(eye >= ANG45 / 3 && eye < ANG180)   // left
+            st_faceindex = ST_calcPainOffset() + 2;
+         else if(eye < ANG45 / 3 || eye >= ANG360 - ANG45 / 3) // ahead
+            st_faceindex = ST_calcPainOffset() + 1;
+         else  // right
+            st_faceindex = ST_calcPainOffset();
+         // switch quicker when controlled by player's eye
+         st_facecount = ST_STRAIGHTFACECOUNT / 2;
+      }
+      else     
+      {
+         // sf: remove st_randomnumber
+         st_faceindex = ST_calcPainOffset() + (M_Random() % 3);
+         st_facecount = ST_STRAIGHTFACECOUNT;
+      }
       priority = ST_PRIORITY_NONE;
    }
    

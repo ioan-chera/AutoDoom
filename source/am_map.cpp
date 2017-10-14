@@ -850,30 +850,6 @@ bool AM_Responder(event_t *ev)
          }
       }
 
-      if(ev->type == ev_eyetracking && ev->data1 & EV_EYE_GAZE && !followplayer)
-      {
-         double x = ev->data2;
-         double y = ev->data3;
-         x = (x - 0.5) * 2;
-         if(f_h)
-            y = (y * video.height / f_h - 0.5) * 2;
-         if(y >= 1)
-         {
-            m_paninc.x = m_paninc.y = 0;
-            return true;   // don't move if player is looking at status bar
-         }
-         if(fabs(x) > 1. / 8)
-            m_paninc.x = FTOM(HORZ_PAN_SCALE(F_PANINC)) * x * 2;
-         else
-            m_paninc.x = 0;
-         if(fabs(y) > 1. / 8)
-            m_paninc.y = -FTOM(VERT_PAN_SCALE(F_PANINC)) * y * 2;
-         else
-            m_paninc.y = 0;
-
-         return true;
-      }
-
       // all other events are keydown only
       if(ev->type != ev_keydown)
          return false;

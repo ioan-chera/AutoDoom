@@ -1384,19 +1384,7 @@ static void G_ReadDemoTiccmd(ticcmd_t *cmd)
       else
          cmd->fly = 0;
 
-      if(demo_version >= VERSION_MIN_EYETRACK)
-      {
-         cmd->eyeyaw = *demo_p++;
-         cmd->eyeyaw |= *demo_p++ << 8;
-         cmd->eyeyaw |= *demo_p++ << 16;
-         cmd->eyeyaw |= *demo_p++ << 24;
-         cmd->eyepitch = *demo_p++;
-         cmd->eyepitch |= *demo_p++ << 8;
-         cmd->eyepitch |= *demo_p++ << 16;
-         cmd->eyepitch |= *demo_p++ << 24;
-      }
-      else
-         cmd->eyeyaw = cmd->eyepitch = D_MAXINT;
+      cmd->eyeyaw = cmd->eyepitch = D_MAXINT;
       
       // killough 3/26/98, 10/98: Ignore savegames in demos 
       if(demoplayback && 
@@ -1453,18 +1441,6 @@ static void G_WriteDemoTiccmd(ticcmd_t *cmd)
 
    if(full_demo_version >= make_full_version(340, 23))
       demo_p[i] = cmd->fly;
-
-   if(demo_version >= VERSION_MIN_EYETRACK)
-   {
-      demo_p[++i] = cmd->eyeyaw & 0xff;
-      demo_p[++i] = cmd->eyeyaw >> 8 & 0xff;
-      demo_p[++i] = cmd->eyeyaw >> 16 & 0xff;
-      demo_p[++i] = cmd->eyeyaw >> 24 & 0xff;
-      demo_p[++i] = cmd->eyepitch & 0xff;
-      demo_p[++i] = cmd->eyepitch >> 8 & 0xff;
-      demo_p[++i] = cmd->eyepitch >> 16 & 0xff;
-      demo_p[++i] = cmd->eyepitch >> 24 & 0xff;
-   }
    
    // NOTE: the distance is *double* that of (ticcmd_t + trailer) because on
    // Release builds, if ticcmd_t becomes larger, just using the simple value

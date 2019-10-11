@@ -352,7 +352,7 @@ static void I_Pick_DoRight(void)
 //
 static void I_Pick_DoAbort(void)
 {
-   I_ExitWithMessage("AutoDoom aborted.\n");
+   I_ExitWithMessage("Eternity Engine aborted.\n");
 }
 
 //

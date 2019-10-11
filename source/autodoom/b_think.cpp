@@ -218,7 +218,10 @@ bool Bot::checkDeadEndTrap(const BSubsec& targss)
 
     LevelStateStack::Clear();
 
-    return m_deepAvailSsectors.empty();
+    bool result = m_deepAvailSsectors.empty();
+   if(!result)
+      DebugLogger() << "rejected ss " << targss.mid << " because of pit";
+   return result;
 }
 
 Bot::SpecialChoice Bot::shouldUseSpecial(const line_t& line, const BSubsec& liness)
@@ -551,9 +554,7 @@ bool Bot::objOfInterest(const BSubsec& ss, BotPathEnd& coord, void* v)
       if(self.m_deepPromise.hasbenefits && !self.m_deepPromise.sss.count(&ss))
          return false;
       if(self.m_deepPromise.sss.count(&ss))
-      {
-         B_Log("Go to promise %g %g", ss.mid.x / 65536., ss.mid.y / 65536.);
-      }
+         B_Log("Go to promise %g %g", ss.mid.x/65536., ss.mid.y/65536.);
       self.m_deepPromise.clear();
    }
 
@@ -1372,10 +1373,8 @@ void Bot::doNonCombatAI()
              if(pt && pt->wait > 0)
              {
                 if(!m_runfast)
-                {
                    B_Log("Run fast");
-                }
-                m_runfast = true;
+                 m_runfast = true;
                 haveplat = true;
              }
 

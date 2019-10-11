@@ -116,7 +116,7 @@ if(BUTTON2 != nil) [(NAME) addButtonWithTitle:(BUTTON2)]; \
                     @"Choose IWAD",
                     @"Cancel",
                     @"No IWAD file prepared",
-                    @"You need to choose a main game WAD before playing AutoDoom.",
+                    @"You need to choose a main game WAD before playing Eternity.",
                     NSInformationalAlertStyle);
    
    CREATE_ALERT_BOX(badIwadAlert,
@@ -306,11 +306,11 @@ BOOL tryCreateDir(NSString* basePath, NSString* name, NSWindow* window)
    NSError* err = nil;
    if(![[NSFileManager defaultManager] createDirectoryAtPath:[basePath stringByAppendingPathComponent:name] withIntermediateDirectories:YES attributes:nil error:&err])
    {
-      NSAlert* alert = [NSAlert alertWithMessageText:@"Couldn't setup AutoDoom storage."
+      NSAlert* alert = [NSAlert alertWithMessageText:@"Couldn't setup Eternity storage."
                                        defaultButton:@"Continue anyway"
                                      alternateButton:nil
                                          otherButton:nil
-                           informativeTextWithFormat:@"AutoDoom failed to finish setting up its local folder in 'Library' where screenshots, configs and saves are stored. AutoDoom may not run correctly.\n\nMore exactly: failed to create '%@'. Description of error: %@", name, [err localizedDescription]];
+                           informativeTextWithFormat:@"Eternity failed to finish setting up its local folder in 'Library' where screenshots, configs and saves are stored. Eternity may not run correctly.\n\nMore exactly: failed to create '%@'. Description of error: %@", name, [err localizedDescription]];
       [alert setAlertStyle:NSCriticalAlertStyle];
       [alert beginSheetModalForWindow:window completionHandler:^(NSModalResponse returnCode) {}];
       return NO;
@@ -335,7 +335,7 @@ BOOL tryCreateDir(NSString* basePath, NSString* name, NSWindow* window)
                                        defaultButton:@"Continue anyway"
                                      alternateButton:nil
                                          otherButton:nil
-                           informativeTextWithFormat:@"The folder where AutoDoom would save its saves/screenshots/etc. (i.e. 'Library/Application Support', usually hidden in Finder) could not be found or created. AutoDoom may not run correctly."];
+                           informativeTextWithFormat:@"The folder where Eternity would save its saves/screenshots/etc. (i.e. 'Library/Application Support', usually hidden in Finder) could not be found or created. Eternity may not run correctly."];
       [alert setAlertStyle:NSCriticalAlertStyle];
       [alert beginSheetModalForWindow:self.window completionHandler:^(NSModalResponse returnCode) {}];
       return;
@@ -343,8 +343,6 @@ BOOL tryCreateDir(NSString* basePath, NSString* name, NSWindow* window)
    
   	NSString *usrPath = [appDataPath stringByAppendingPathComponent:@"user"];
    
-   if(!tryCreateDir(usrPath, @"autodoom", self.window))
-      return;
    if(!tryCreateDir(usrPath, @"doom", self.window))
       return;
    if(!tryCreateDir(usrPath, @"doom2", self.window))
@@ -514,7 +512,7 @@ BOOL tryCreateDir(NSString* basePath, NSString* name, NSWindow* window)
 	// IOAN 20130103: use Neil's PrBoom-Mac Launcher code
 	[task release];
 	task = [[NSTask alloc] init];
-   NSString *enginePath = [[NSBundle mainBundle] pathForResource:@"autodoom" ofType:nil];
+   NSString *enginePath = [[NSBundle mainBundle] pathForResource:@"eternity" ofType:nil];
    if(!enginePath)
    {
       NSBeep();   // Unexpected error not to have an EE executable, at any rate

@@ -27,6 +27,7 @@
 #include "a_args.h"
 #include "a_small.h"
 #include "autodoom/b_botmap.h"
+#include "autodoom/b_learn.h"
 #include "c_io.h" // ioanch
 #include "d_dehtbl.h"
 #include "d_gi.h"
@@ -40,6 +41,7 @@
 #include "e_states.h"
 #include "e_things.h"
 #include "e_ttypes.h"
+#include "e_weapons.h"
 #include "g_dmflag.h"
 #include "g_game.h"
 #include "hu_stuff.h"
@@ -2224,6 +2226,18 @@ void P_SpawnPlayer(mapthing_t* mthing)
    {
       P_ResetChasecam();
       P_ResetWalkcam();
+   }
+
+   int parm = B_GetLearningValue();
+   if(parm >= 0)
+   {
+      E_GiveAllClassWeapons(p);
+      E_GiveAllAmmo(p, GAA_MAXAMOUNT);
+      p->cheats |= CF_IMMORTAL | CF_INFAMMO;
+      int weaponindex = eclamp(parm, 0, 8);
+      weaponinfo_t *info = P_GetPlayerWeapon(p, weaponindex);
+      if(info)
+         p->pendingweapon = info;
    }
 }
 

@@ -31,6 +31,7 @@
 
 #include "b_analysis.h"
 #include "b_itemlearn.h"
+#include "b_learn.h"
 #include "b_statistics.h"
 #include "b_think.h"
 #include "b_util.h"
@@ -1160,7 +1161,8 @@ void Bot::doCombatAI(const Collection<Target>& targets)
     if (!m_intoSwitch)
         cmd->angleturn = angleturn * random.range(1, 2);
 
-   if(highestThreat->type == TargetMonster)
+   int learn = B_GetLearningValue();
+   if(highestThreat->type == TargetMonster && learn < 0)
       pickBestWeapon(*highestThreat);
 
    Mobj *linetarget = 0;
@@ -1178,7 +1180,13 @@ void Bot::doCombatAI(const Collection<Target>& targets)
        (double)bwi.refireRate;
 
        cmd->buttons |= BT_ATTACK;
-       if(bwi.flags & BWI_TAP_SNIPE)
+       if(pl->attackdown & AT_ALL && pl->readyweapon->flags & WPF_NOAUTOFIRE &&
+          pl->psprites[0].state->action == A_WeaponReady)
+       {
+          cmd->buttons &= ~BT_ATTACK;
+       }
+
+       if(cmd->buttons & BT_ATTACK && bwi.flags & BWI_TAP_SNIPE)
        {
           if(bwi.calcHitscanDamage(dist, t.radius, t.height,
                                    !!pl->powers[pw_strength], true) /
@@ -1225,6 +1233,7 @@ void Bot::doCombatAI(const Collection<Target>& targets)
                                               D_abs(my - ny)) <= 128 * FRACUNIT*/)
     {
        // avoid using the rocket launcher for now...
+       if(learn < 0)
         pickRandomWeapon(targets[0]);
     }
 //    else if (random.range(1, 300) == 1)

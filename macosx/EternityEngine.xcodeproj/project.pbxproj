@@ -366,6 +366,7 @@
 		4FC0A93F1E1E2ABC006CEC45 /* cam_common.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4FC0A93A1E1E2ABC006CEC45 /* cam_common.cpp */; };
 		4FC0A9401E1E2ABC006CEC45 /* cam_shoot.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4FC0A93C1E1E2ABC006CEC45 /* cam_shoot.cpp */; };
 		4FC0A9411E1E2ABC006CEC45 /* cam_use.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4FC0A93D1E1E2ABC006CEC45 /* cam_use.cpp */; };
+		4FE5623E243525AB002A5CC4 /* b_learn.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4FE5623D243525AB002A5CC4 /* b_learn.cpp */; };
 		4FE91CD6196FDFC600FB6336 /* b_itemlearn.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4FE91CD4196FDFC600FB6336 /* b_itemlearn.cpp */; };
 		4FE91CD91970399A00FB6336 /* b_lineeffect.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4FE91CD71970399900FB6336 /* b_lineeffect.cpp */; };
 		4FEB0C891CA52059005737DD /* (null) in Sources */ = {isa = PBXBuildFile; };
@@ -666,6 +667,8 @@
 		4FC0A93B1E1E2ABC006CEC45 /* cam_common.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = cam_common.h; path = ../source/cam_common.h; sourceTree = "<group>"; };
 		4FC0A93C1E1E2ABC006CEC45 /* cam_shoot.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = cam_shoot.cpp; path = ../source/cam_shoot.cpp; sourceTree = "<group>"; };
 		4FC0A93D1E1E2ABC006CEC45 /* cam_use.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = cam_use.cpp; path = ../source/cam_use.cpp; sourceTree = "<group>"; };
+		4FE5623C243524EF002A5CC4 /* b_learn.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = b_learn.h; sourceTree = "<group>"; };
+		4FE5623D243525AB002A5CC4 /* b_learn.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = b_learn.cpp; sourceTree = "<group>"; };
 		4FE91CD4196FDFC600FB6336 /* b_itemlearn.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = b_itemlearn.cpp; sourceTree = "<group>"; };
 		4FE91CD5196FDFC600FB6336 /* b_itemlearn.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = b_itemlearn.h; sourceTree = "<group>"; };
 		4FE91CD71970399900FB6336 /* b_lineeffect.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = b_lineeffect.cpp; sourceTree = "<group>"; };
@@ -1372,6 +1375,8 @@
 				4F43B451182D9F7A00730C02 /* b_glbsp.h */,
 				4FE91CD4196FDFC600FB6336 /* b_itemlearn.cpp */,
 				4FE91CD5196FDFC600FB6336 /* b_itemlearn.h */,
+				4FE5623D243525AB002A5CC4 /* b_learn.cpp */,
+				4FE5623C243524EF002A5CC4 /* b_learn.h */,
 				4FE91CD71970399900FB6336 /* b_lineeffect.cpp */,
 				4FE91CD81970399A00FB6336 /* b_lineeffect.h */,
 				4F43B452182D9F7A00730C02 /* b_msector.cpp */,
@@ -2688,6 +2693,7 @@
 				4F5F38F5182D9AC00027813A /* mn_htic.cpp in Sources */,
 				4F5F38F6182D9AC00027813A /* mn_menus.cpp in Sources */,
 				4F02C37723126D6C004DBBA7 /* adlmidi_sequencer.cpp in Sources */,
+				4FE5623E243525AB002A5CC4 /* b_learn.cpp in Sources */,
 				4FFDE56521DE891F00836A2D /* crc32.c in Sources */,
 				4FFDE56421DE891F00836A2D /* deflate.c in Sources */,
 				4F5F38F7182D9AC00027813A /* mn_misc.cpp in Sources */,

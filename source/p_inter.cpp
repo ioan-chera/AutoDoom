@@ -30,6 +30,7 @@
 #include "a_small.h"
 #include "am_map.h"
 #include "autodoom/b_analysis.h"
+#include "autodoom/b_learn.h"
 #include "autodoom/b_statistics.h"
 #include "autodoom/b_think.h"
 #include "autodoom/b_util.h"
@@ -992,6 +993,9 @@ static void P_KillMobj(Mobj *source, Mobj *target, emod_t *mod)
          players->killcount++;
    }
 
+   if(B_GetLearningValue() >= 0)
+      B_AddLearningKill();
+
    if(target->player)
    {
       // count environment kills against you
@@ -1554,6 +1558,9 @@ void P_DamageMobj(Mobj *target, Mobj *inflictor, Mobj *source,
    {
       B_AddMonsterDeath(target->info);
    }
+   if(target->player)
+      if(B_GetLearningValue() >= 0)
+         B_AddLearningTakenDamage(damage);
 
    // do the damage
    if(!(target->flags4 & MF4_NODAMAGE) || damage >= 10000)

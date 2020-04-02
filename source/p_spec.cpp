@@ -37,6 +37,7 @@
 #include "a_small.h"
 #include "acs_intr.h"
 #include "autodoom/b_botmap.h"
+#include "autodoom/b_learn.h"
 #include "autodoom/b_lineeffect.h"
 #include "autodoom/b_think.h"
 #include "c_io.h"
@@ -1311,6 +1312,9 @@ void P_UpdateSpecials()
    // Downcount level timer, exit level if elapsed
    if(levelTimeLimit && leveltime >= levelTimeLimit*35*60 )
       G_ExitLevel();
+
+   if(B_GetLearningValue() >= 0 && leveltime >= B_GetLearningTime())
+      B_LearningConclude();
 
    // Check frag counters, if frag limit reached, exit level // Ty 03/18/98
    //  Seems like the total frags should be kept in a simple

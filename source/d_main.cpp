@@ -37,6 +37,7 @@
 #include "acs_intr.h"
 #include "am_map.h"
 #include "autodoom/b_ape.h"
+#include "autodoom/b_learn.h"
 #include "autodoom/b_statistics.h"
 #include "autodoom/b_think.h" // IOANCH
 #include "c_io.h"
@@ -1514,6 +1515,12 @@ static void D_DoomInit()
          levelTimeLimit = 20 * 60 * TICRATE;
          usermsg("Austin Virtual Gaming: Levels will end after 20 minutes");
       }
+   }
+
+   if((p = M_CheckParm("-learn")) && p < myargc - 1)
+   {
+      B_EnableLearning(atoi(myargv[p + 1]));
+      fastdemo = true;
    }
 
    if(((p = M_CheckParm("-warp")) ||      // killough 5/2/98
